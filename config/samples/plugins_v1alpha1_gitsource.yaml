@@ -1,0 +1,15 @@
+apiVersion: plugins.puppeteer.milesbryant.co.uk/v1alpha1
+kind: GitSource
+metadata:
+  labels:
+    controller-tools.k8s.io: "1.0"
+  name: kubernetes-master
+spec:
+  repository:
+    # remote URL to fetch/clone from
+    url: https://github.com/kubernetes/kubernetes/
+    branch: master
+  clone:
+    shallow: true
+  poll:
+    interval: 1m

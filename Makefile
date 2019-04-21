@@ -16,6 +16,11 @@ manager: generate fmt vet
 run: generate fmt vet
 	go run ./cmd/manager/main.go
 
+# Run e2e tests. kubeconfig must be pointing to a K8s cluster running a fully configured puppeteer.
+# TODO: automate orchestration of k8s cluster (e.g. using k8s e2e or minikube) and puppeteer
+e2e: generate fmt vet manifests install
+	go test ./e2e/...
+
 # Install CRDs into a cluster
 install: manifests
 	kubectl apply -f config/crds
