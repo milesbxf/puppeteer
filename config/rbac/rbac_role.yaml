@@ -107,7 +107,7 @@ rules:
 - apiGroups:
   - core.puppeteer.milesbryant.co.uk
   resources:
-  - localstoragedirectories
+  - localstorages
   verbs:
   - get
   - list
@@ -119,7 +119,7 @@ rules:
 - apiGroups:
   - core.puppeteer.milesbryant.co.uk
   resources:
-  - localstoragedirectories/status
+  - localstorages/status
   verbs:
   - get
   - update

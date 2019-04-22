@@ -21,6 +21,7 @@ import (
 	"os"
 
 	"github.com/milesbxf/puppeteer/pkg/apis"
+	apiserver "github.com/milesbxf/puppeteer/pkg/apis/server"
 	"github.com/milesbxf/puppeteer/pkg/controller"
 	"github.com/milesbxf/puppeteer/pkg/webhook"
 	_ "k8s.io/client-go/plugin/pkg/client/auth/gcp"
@@ -40,7 +41,7 @@ func main() {
 	logf.SetLogger(logf.ZapLogger(false))
 	log := logf.Log.WithName("entrypoint")
 
-	err := apis.Listen(apiAddr)
+	err := apiserver.Listen(apiAddr)
 	if err != nil {
 		log.Error(err, "unable to set up api server")
 		os.Exit(1)
