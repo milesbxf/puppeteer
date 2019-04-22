@@ -32,10 +32,19 @@ import (
 
 func main() {
 	var metricsAddr string
+	var apiAddr string
+
+	flag.StringVar(&apiAddr, "api-addr", ":9090", "The address the API binds to.")
 	flag.StringVar(&metricsAddr, "metrics-addr", ":8080", "The address the metric endpoint binds to.")
 	flag.Parse()
 	logf.SetLogger(logf.ZapLogger(false))
 	log := logf.Log.WithName("entrypoint")
+
+	err := apis.Listen(apiAddr)
+	if err != nil {
+		log.Error(err, "unable to set up api server")
+		os.Exit(1)
+	}
 
 	// Get a config to talk to the apiserver
 	log.Info("setting up client for manager")
@@ -78,7 +87,6 @@ func main() {
 	// Start the Cmd
 	log.Info("Starting the Cmd.")
 	if err := mgr.Start(signals.SetupSignalHandler()); err != nil {
-		log.Error(err, "unable to run the manager")
 		os.Exit(1)
 	}
 }

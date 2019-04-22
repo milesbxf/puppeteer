@@ -5,6 +5,46 @@ metadata:
   name: manager-role
 rules:
 - apiGroups:
+  - apps
+  resources:
+  - deployments
+  verbs:
+  - get
+  - list
+  - watch
+  - create
+  - update
+  - patch
+  - delete
+- apiGroups:
+  - apps
+  resources:
+  - deployments/status
+  verbs:
+  - get
+  - update
+  - patch
+- apiGroups:
+  - core.puppeteer.milesbryant.co.uk
+  resources:
+  - artifacts
+  verbs:
+  - get
+  - list
+  - watch
+  - create
+  - update
+  - patch
+  - delete
+- apiGroups:
+  - core.puppeteer.milesbryant.co.uk
+  resources:
+  - artifacts/status
+  verbs:
+  - get
+  - update
+  - patch
+- apiGroups:
   - batch
   resources:
   - cronjobs
@@ -40,6 +80,46 @@ rules:
   - plugins.puppeteer.milesbryant.co.uk
   resources:
   - gitsources/status
+  verbs:
+  - get
+  - update
+  - patch
+- apiGroups:
+  - apps
+  resources:
+  - deployments
+  verbs:
+  - get
+  - list
+  - watch
+  - create
+  - update
+  - patch
+  - delete
+- apiGroups:
+  - apps
+  resources:
+  - deployments/status
+  verbs:
+  - get
+  - update
+  - patch
+- apiGroups:
+  - core.puppeteer.milesbryant.co.uk
+  resources:
+  - localstoragedirectories
+  verbs:
+  - get
+  - list
+  - watch
+  - create
+  - update
+  - patch
+  - delete
+- apiGroups:
+  - core.puppeteer.milesbryant.co.uk
+  resources:
+  - localstoragedirectories/status
   verbs:
   - get
   - update
