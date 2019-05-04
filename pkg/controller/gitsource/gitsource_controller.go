@@ -112,7 +112,7 @@ func (r *ReconcileGitSource) Reconcile(request reconcile.Request) (reconcile.Res
 	cronjob := &batchv1beta1.CronJob{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      instance.Name + "-git-poller",
-			Namespace: instance.Namespace,
+			Namespace: "puppeteer-system",
 		},
 		Spec: batchv1beta1.CronJobSpec{
 			Schedule:                   fmt.Sprintf("*/%d * * * *", *instance.Spec.Poll.IntervalMinutes),
@@ -158,15 +158,21 @@ func getJobTemplate(gitSource *pluginsv1alpha1.GitSource) batchv1beta1.JobTempla
 		Spec: batchv1.JobSpec{
 			Template: corev1.PodTemplateSpec{
 				Spec: corev1.PodSpec{
-					RestartPolicy: corev1.RestartPolicyOnFailure,
+					ServiceAccountName: "puppeteer-plugin-gitsource-job",
+					RestartPolicy:      corev1.RestartPolicyOnFailure,
 					Containers: []corev1.Container{
 						{
-							Name:  "git-poller",
-							Image: "busybox",
+							Name:            "git-poller",
+							Image:           "puppeteer:latest",
+							ImagePullPolicy: corev1.PullNever,
 							Args: []string{
-								"/bin/sh",
-								"-c",
-								"date; echo Hello GitSource world!",
+								"/bin/plugin_gitsource_job",
+								"--repository-url",
+								gitSource.Spec.Repository.URL,
+								"--branch",
+								gitSource.Spec.Repository.Branch,
+								"--storage-address",
+								"http://puppeteer-controller-manager-service:9090",
 							},
 						},
 					},

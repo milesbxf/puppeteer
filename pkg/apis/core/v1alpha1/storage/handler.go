@@ -2,6 +2,7 @@ package storage
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/milesbxf/puppeteer/pkg/apis"
 	corev1alpha1 "github.com/milesbxf/puppeteer/pkg/apis/core/v1alpha1"
@@ -49,13 +50,15 @@ func handlePOSTStorageUpload(req typhon.Request) typhon.Response {
 		return typhon.Response{Error: err}
 	}
 
-	return req.Response(struct {
-		Status    string `json:"status"`
-		Reference string `json:"reference"`
-	}{
-		Status:    "ok",
-		Reference: obj.ObjectMeta.Name,
+	sgv := corev1alpha1.SchemeGroupVersion
+
+	resp := req.Response(corev1alpha1.StorageResponse{
+		Status:               "ok",
+		GroupVersionResource: fmt.Sprintf("localstorage.%s.%s", sgv.Version, sgv.Group),
+		Reference:            obj.ObjectMeta.Name,
 	})
+	resp.StatusCode = 201
+	return resp
 }
 func createLocalStorageObj(id, key string) (*corev1alpha1.LocalStorage, error) {
 	k8sclient, err := setupK8sClient()

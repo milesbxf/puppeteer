@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"compress/gzip"
 	"context"
+	"encoding/json"
 	"errors"
 	"flag"
 	"fmt"
@@ -18,12 +19,16 @@ import (
 	"regexp"
 	"strings"
 
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
+
 	"github.com/milesbxf/puppeteer/pkg/apis"
 	corev1alpha1 "github.com/milesbxf/puppeteer/pkg/apis/core/v1alpha1"
 	git "gopkg.in/src-d/go-git.v4"
 	gitconfig "gopkg.in/src-d/go-git.v4/config"
 	"gopkg.in/src-d/go-git.v4/plumbing"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes/scheme"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/apiutil"
@@ -70,6 +75,13 @@ func main() {
 
 	artifactName := fmt.Sprintf("%s-%s", repoNametoK8sName(*repository), sha)
 
+	err = k8sclient.Get(context.TODO(), types.NamespacedName{Name: artifactName, Namespace: "default"}, &corev1alpha1.Artifact{})
+	if err == nil {
+		log.Printf("Artifact %s already exists, doing nothing", artifactName)
+	} else if !apierrors.IsNotFound(err) {
+		log.Fatalf("Failed to look for existing artifacts: %s", err.Error())
+	}
+
 	bodyBuf := &bytes.Buffer{}
 	bodyWriter := multipart.NewWriter(bodyBuf)
 
@@ -94,29 +106,35 @@ func main() {
 	}
 	defer resp.Body.Close()
 
-	resp_body, err := ioutil.ReadAll(resp.Body)
+	if resp.StatusCode != 201 {
+		bodybytes, _ := ioutil.ReadAll(resp.Body)
+		log.Fatalf("Got unexpected HTTP status code %d. Body: %s", resp.StatusCode, string(bodybytes))
+	}
+
+	var storageResp corev1alpha1.StorageResponse
+	d := json.NewDecoder(resp.Body)
+	err = d.Decode(&storageResp)
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	fmt.Println(resp.Status)
-	fmt.Println(string(resp_body))
-	// If its a new commit
-	//  - submit tarball to storage service
-	//  - Create Artifact pointing at LocalStorageDirectory and commit
+	log.Printf("Response from storage: %+v", storageResp)
 
-	// newArtifact := &corev1alpha1.Artifact{
-	// 	ObjectMeta: metav1.ObjectMeta{
-	// 		Name:      fmt.Sprintf("%s-%s", repoNametoK8sName(*repository), sha),
-	// 		Namespace: "default",
-	// 	},
-	// 	Spec: corev1alpha1.ArtifactSpec{},
-	// }
-	// log.Printf("Creating artifact %s", newArtifact.Name)
-	// err = k8sclient.Create(context.TODO(), newArtifact)
-	// if err != nil {
-	// 	log.Fatalf("Failed to look for existing artifacts: %s", err.Error())
-	// }
+	newArtifact := &corev1alpha1.Artifact{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      artifactName,
+			Namespace: "default",
+		},
+		Spec: corev1alpha1.ArtifactSpec{
+			GroupVersionResource: storageResp.GroupVersionResource,
+			Reference:            storageResp.Reference,
+		},
+	}
+	log.Printf("Creating artifact %s", newArtifact.Name)
+	err = k8sclient.Create(context.TODO(), newArtifact)
+	if err != nil {
+		log.Fatalf("Failed to create new artifact: %s", err.Error())
+	}
 
 }
 func setupK8sClient() (client.Client, error) {

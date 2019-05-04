@@ -261,6 +261,14 @@
   version = "0.5"
 
 [[projects]]
+  digest = "1:4853aea8a727b1cc962f687688aef22ce0dd040a9f695c07f303559e4595a152"
+  name = "github.com/lithammer/shortuuid"
+  packages = ["."]
+  pruneopts = "T"
+  revision = "1be5ab5d90f6624ae0484197d1bb079a399712f0"
+  version = "v3.0.3"
+
+[[projects]]
   digest = "1:3804a3a02964db8e6db3e5e7960ac1c1a9b12835642dd4f4ac4e56c749ec73eb"
   name = "github.com/markbates/inflect"
   packages = ["."]
@@ -1158,9 +1166,12 @@
   analyzer-version = 1
   input-imports = [
     "github.com/emicklei/go-restful",
+    "github.com/lithammer/shortuuid",
     "github.com/monzo/typhon",
     "github.com/onsi/ginkgo",
     "github.com/onsi/gomega",
+    "github.com/onsi/gomega/format",
+    "github.com/onsi/gomega/types",
     "golang.org/x/net/context",
     "gopkg.in/src-d/go-git.v4",
     "gopkg.in/src-d/go-git.v4/config",

@@ -23,10 +23,16 @@ import (
 // EDIT THIS FILE!  THIS IS SCAFFOLDING FOR YOU TO OWN!
 // NOTE: json tags are required.  Any new fields you add must have json tags for the fields to be serialized.
 
+type StorageResponse struct {
+	Status               string `json:"status"`
+	GroupVersionResource string `json:"group_version_resource"`
+	Reference            string `json:"reference"`
+}
+
 // ArtifactSpec defines the desired state of Artifact
 type ArtifactSpec struct {
-	// INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
-	// Important: Run "make" to regenerate code after modifying this file
+	GroupVersionResource string `json:"group_version_resource,omitempty"`
+	Reference            string `json:"reference,omitempty"`
 }
 
 // ArtifactStatus defines the observed state of Artifact

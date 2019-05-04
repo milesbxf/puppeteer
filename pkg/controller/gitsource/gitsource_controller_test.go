@@ -35,15 +35,15 @@ import (
 
 var c client.Client
 
-var expectedRequest = reconcile.Request{NamespacedName: types.NamespacedName{Name: "foo", Namespace: "default"}}
-var cronjobKey = types.NamespacedName{Name: "foo-git-poller", Namespace: "default"}
+var expectedRequest = reconcile.Request{NamespacedName: types.NamespacedName{Name: "foo", Namespace: "puppeteer-system"}}
+var cronjobKey = types.NamespacedName{Name: "foo-git-poller", Namespace: "puppeteer-system"}
 
 const timeout = time.Second * 5
 
 func TestReconcile(t *testing.T) {
 	g := gomega.NewGomegaWithT(t)
 	instance := &pluginsv1alpha1.GitSource{
-		ObjectMeta: metav1.ObjectMeta{Name: "foo", Namespace: "default"},
+		ObjectMeta: metav1.ObjectMeta{Name: "foo", Namespace: "puppeteer-system"},
 		Spec: pluginsv1alpha1.GitSourceSpec{
 			Poll: pluginsv1alpha1.PollOptions{
 				IntervalMinutes: pointer.Int32Ptr(1),

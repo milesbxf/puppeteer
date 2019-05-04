@@ -18,4 +18,10 @@ FROM debian:buster-slim
 
 WORKDIR /bin
 
+RUN apt-get update && \
+    apt-get install -y \
+      ca-certificates \
+    && \
+    apt-get clean
+
 COPY --from=builder /go/src/github.com/milesbxf/puppeteer/bin .
