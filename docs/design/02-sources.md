@@ -34,7 +34,7 @@ metadata:
   labels:
     controller-tools.k8s.io: "1.0"
     core.puppeteer.milesbryant.co.uk/artifact-id: kubernetes-master@1377108c084545e2279bd67eed56e54283572302
-  name: git-kubernetes-master-abcdefgh
+  name: git-kubernetes-master-1377108c084545e2279bd67eed56e54283572302
 Spec:
   id: kubernetes-master@1377108c084545e2279bd67eed56e54283572302
   source: 

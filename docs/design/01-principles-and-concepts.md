@@ -3,6 +3,7 @@
 ## ☸︎ Use of Kubernetes
 
 The entire system should be modeled around the Kubernetes API, using custom resources, APIs and controllers. Kubernetes is widely used and helps solve a lot of difficult distributed systems problems. It includes a powerful job scheduler and access control mechanism, encourages building highly resilient applications, and has been shown to scale.
+
 Using custom resource definitions (CRDs) mean that we can debug the state of the system just by using kubectl (or the Kubernetes API). It also means that end users can create really highly granular RBAC policies.
 
 Writing controllers that operate on these CRDs keeps the system highly decoupled yet (if we design it right!) cohesive, meaning that each part does one thing well. This should make it easy to test parts of the system in isolation.
@@ -13,7 +14,7 @@ Ideally, someone would be able to dynamically add or update a plugin just by dep
 
 ## Instrumentation
 
-The system should be easy to instrument and analyse, both from an observability and monitoring perspective, and from a data/business analytics perspective. I've always admired the approach of the [Hygieia project](http://hygieia.github.io/Hygieia/screenshots.html).
+The system should be easy to instrument and analyse, both from an observability and monitoring perspective, and from a data/business analytics perspective. I've always admired the approach of the [Hygieia project](http://hygieia.github.io/Hygieia/screenshots.html) - effective engineering organisations like to objectively track the effectiveness of their delivery pipelines, identify bottlenecks, etc.
 
 
 ## Security, access control and provenance
@@ -36,6 +37,7 @@ Everything in Puppeteer should revolve around the concept of an Artifact. An Art
 The main property that Artifacts have is that they're uniquely identifiable and immutable. This means a Git repository pinned to a commit SHA (rather than a tag), and Docker images pinned to a SHA.
 Artifacts will typically (but not always) have some kind of state associated with them. For example, a Git repository will have the filesystem tree of repository contents (and Git metadata), the Docker image will have the image layers.
 It seems sensible to not use Kubernetes to store this state - most typical use cases would exceed the [limits of etcd](https://github.com/etcd-io/etcd/blob/master/Documentation/dev-guide/limit.md) quite quickly.
+
 Instead state should be stored in some other kind of backend. It makes sense to implement these backends as plugins, to make it easy to write new backends. Some examples of storage backends:
 * Local filesystem - storage service would just store and return files locally. Good for testing, not so scalable or available
 * Object storage ala Minio/AWS S3 or Google Cloud Storage - these are cheap to store lots of data (and actually have pretty good latency when running in the cloud)
