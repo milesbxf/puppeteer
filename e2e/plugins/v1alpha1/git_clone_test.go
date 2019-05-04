@@ -31,6 +31,7 @@ var k8sNameRegexp = regexp.MustCompile("[^a-zA-Z-.]")
 const timeout = time.Second * 5
 
 func TestGitSourceCreatesArtifact(t *testing.T) {
+	t.Skip("Test disabled")
 	g := gomega.NewGomegaWithT(t)
 	id := strings.ToLower(shortuuid.New())
 	gitsourceName := types.NamespacedName{Name: "gitfixture-basic-" + id, Namespace: "default"}
