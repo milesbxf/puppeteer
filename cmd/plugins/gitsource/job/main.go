@@ -193,8 +193,8 @@ func artifactExistsForCommit(sha string) (bool, error) {
 
 func repoNametoK8sName(r string) string {
 	name := strings.ToLower(r)
-	name = strings.ReplaceAll(name, "https://", "")
-	name = strings.ReplaceAll(name, "git@", "")
+	name = strings.Replace(name, "https://", "", -1)
+	name = strings.Replace(name, "git@", "", -1)
 	name = k8sNameRegexp.ReplaceAllString(name, "-")
 	return name
 }
