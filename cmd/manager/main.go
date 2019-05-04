@@ -38,7 +38,7 @@ func main() {
 	flag.StringVar(&apiAddr, "api-addr", ":9090", "The address the API binds to.")
 	flag.StringVar(&metricsAddr, "metrics-addr", ":8080", "The address the metric endpoint binds to.")
 	flag.Parse()
-	logf.SetLogger(logf.ZapLogger(false))
+	logf.SetLogger(logf.ZapLogger(true))
 	log := logf.Log.WithName("entrypoint")
 
 	err := apiserver.Listen(apiAddr)

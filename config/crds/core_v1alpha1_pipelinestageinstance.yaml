@@ -4,12 +4,12 @@ metadata:
   creationTimestamp: null
   labels:
     controller-tools.k8s.io: "1.0"
-  name: artifacts.core.puppeteer.milesbryant.co.uk
+  name: pipelinestageinstances.core.puppeteer.milesbryant.co.uk
 spec:
   group: core.puppeteer.milesbryant.co.uk
   names:
-    kind: Artifact
-    plural: artifacts
+    kind: PipelineStageInstance
+    plural: pipelinestageinstances
   scope: Namespaced
   validation:
     openAPIV3Schema:
@@ -27,16 +27,6 @@ spec:
         metadata:
           type: object
         spec:
-          properties:
-            reference:
-              type: string
-            source:
-              properties:
-                config:
-                  type: string
-                type:
-                  type: string
-              type: object
           type: object
         status:
           type: object

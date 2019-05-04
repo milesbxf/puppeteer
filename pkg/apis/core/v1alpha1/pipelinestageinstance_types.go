@@ -23,26 +23,14 @@ import (
 // EDIT THIS FILE!  THIS IS SCAFFOLDING FOR YOU TO OWN!
 // NOTE: json tags are required.  Any new fields you add must have json tags for the fields to be serialized.
 
-type StorageResponse struct {
-	Status               string `json:"status"`
-	GroupVersionResource string `json:"group_version_resource"`
-	Reference            string `json:"reference"`
+// PipelineStageInstanceSpec defines the desired state of PipelineStageInstance
+type PipelineStageInstanceSpec struct {
+	// INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
+	// Important: Run "make" to regenerate code after modifying this file
 }
 
-type ArtifactSource struct {
-	Type   string `json:"type,omitempty"`
-	Config string `json:"config,omitempty"`
-}
-
-// ArtifactSpec defines the desired state of Artifact
-type ArtifactSpec struct {
-	Source               ArtifactSource `json:"source,omitempty"`
-	GroupVersionResource string         `json:"group_version_resource,omitempty"`
-	Reference            string         `json:"reference,omitempty"`
-}
-
-// ArtifactStatus defines the observed state of Artifact
-type ArtifactStatus struct {
+// PipelineStageInstanceStatus defines the observed state of PipelineStageInstance
+type PipelineStageInstanceStatus struct {
 	// INSERT ADDITIONAL STATUS FIELD - define observed state of cluster
 	// Important: Run "make" to regenerate code after modifying this file
 }
@@ -50,25 +38,25 @@ type ArtifactStatus struct {
 // +genclient
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
-// Artifact is the Schema for the artifacts API
+// PipelineStageInstance is the Schema for the pipelinestageinstances API
 // +k8s:openapi-gen=true
-type Artifact struct {
+type PipelineStageInstance struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
-	Spec   ArtifactSpec   `json:"spec,omitempty"`
-	Status ArtifactStatus `json:"status,omitempty"`
+	Spec   PipelineStageInstanceSpec   `json:"spec,omitempty"`
+	Status PipelineStageInstanceStatus `json:"status,omitempty"`
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
-// ArtifactList contains a list of Artifact
-type ArtifactList struct {
+// PipelineStageInstanceList contains a list of PipelineStageInstance
+type PipelineStageInstanceList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`
-	Items           []Artifact `json:"items"`
+	Items           []PipelineStageInstance `json:"items"`
 }
 
 func init() {
-	SchemeBuilder.Register(&Artifact{}, &ArtifactList{})
+	SchemeBuilder.Register(&PipelineStageInstance{}, &PipelineStageInstanceList{})
 }

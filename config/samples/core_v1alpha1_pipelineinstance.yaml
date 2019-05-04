@@ -1,0 +1,9 @@
+apiVersion: core.puppeteer.milesbryant.co.uk/v1alpha1
+kind: PipelineInstance
+metadata:
+  labels:
+    controller-tools.k8s.io: "1.0"
+  name: pipelineinstance-sample
+spec:
+  # Add fields here
+  foo: bar
