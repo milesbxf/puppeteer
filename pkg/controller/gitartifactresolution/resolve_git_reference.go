@@ -27,41 +27,69 @@ var rlog = logf.Log.WithName("resolver")
 
 const (
 	storageAddress    = "http://localhost:9090"
-	storagePathPrefix = "/v1alpha1/api/core/storage/upload"
+	storagePathPrefix = "/v1alpha1/api/core/storage"
 )
 
 func Resolve(res *pluginsv1alpha1.GitArtifactResolution) (*corev1alpha1.StorageReference, error) {
-	var buf bytes.Buffer
-	err := cloneRepoToTarReader(res.Spec.RepositoryURL, res.Spec.CommitSHA, &buf)
+	logParams := []interface{}{"storage_id", res.Name}
+	targetUrl := fmt.Sprintf("%s%s/%s", storageAddress, storagePathPrefix, res.Name)
+	resp, err := http.Get(targetUrl)
 	if err != nil {
-		rlog.Error(err, "Failed to clone repository and tar it")
+		rlog.Error(err, "GET storage service", logParams...)
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode == 200 {
+		var storageRef corev1alpha1.StorageReference
+		d := json.NewDecoder(resp.Body)
+		err := d.Decode(&storageRef)
+		if err != nil {
+			rlog.Error(err, "decoding response from storage")
+			return nil, err
+		}
+
+		rlog.Info("got response from storage", "storage_response", storageRef)
+
+		return &storageRef, nil
+		// return decodeStorageRef(resp.Body)
+	} else if resp.StatusCode != 404 {
+		err := fmt.Errorf("unexpected status code from storage service: %d", resp.StatusCode)
+		rlog.Error(err, "GET storage service", logParams...)
 		return nil, err
 	}
 
-	rlog.Info("Compressed repository", "compressed_bytes", buf.Len())
+	rlog.Info("no storage found, cloning & creating", logParams...)
+
+	var buf bytes.Buffer
+	err = cloneRepoToTarReader(res.Spec.RepositoryURL, res.Spec.CommitSHA, &buf)
+	if err != nil {
+		rlog.Error(err, "Failed to clone repository and tar it", logParams...)
+		return nil, err
+	}
+
+	rlog.Info("Compressed repository", append(logParams, "compressed_bytes", buf.Len())...)
 
 	bodyBuf := &bytes.Buffer{}
 	bodyWriter := multipart.NewWriter(bodyBuf)
 
 	fileWriter, err := bodyWriter.CreateFormFile("uploadfile", res.Name+".tar.gz")
 	if err != nil {
-		rlog.Error(err, "writing to buffer")
+		rlog.Error(err, "writing to buffer", logParams...)
 		return nil, err
 	}
 	_, err = io.Copy(fileWriter, &buf)
 	if err != nil {
-		rlog.Error(err, "writing to file")
+		rlog.Error(err, "writing to file", logParams...)
 		return nil, err
 	}
 
 	contentType := bodyWriter.FormDataContentType()
 	bodyWriter.Close()
 
-	targetUrl := fmt.Sprintf("%s%s/%s", storageAddress, storagePathPrefix, res.Name)
-
-	resp, err := http.Post(targetUrl, contentType, bodyBuf)
+	resp, err = http.Post(targetUrl, contentType, bodyBuf)
 	if err != nil {
-		rlog.Error(err, "POSTing to storage service")
+		rlog.Error(err, "POSTing to storage service", logParams...)
 		return nil, err
 	}
 	defer resp.Body.Close()
@@ -69,13 +97,17 @@ func Resolve(res *pluginsv1alpha1.GitArtifactResolution) (*corev1alpha1.StorageR
 	if resp.StatusCode != 201 {
 		bodybytes, _ := ioutil.ReadAll(resp.Body)
 		err = fmt.Errorf("Got unexpected HTTP status code %d. Body: %s", resp.StatusCode, string(bodybytes))
-		rlog.Error(err, "POSTing to storage service")
+		rlog.Error(err, "POSTing to storage service", logParams...)
 		return nil, err
 	}
 
+	return decodeStorageRef(resp.Body)
+}
+
+func decodeStorageRef(body io.Reader) (*corev1alpha1.StorageReference, error) {
 	var storageRef corev1alpha1.StorageReference
-	d := json.NewDecoder(resp.Body)
-	err = d.Decode(&storageRef)
+	d := json.NewDecoder(body)
+	err := d.Decode(&storageRef)
 	if err != nil {
 		rlog.Error(err, "decoding response from storage")
 		return nil, err

@@ -7,7 +7,9 @@ import (
 	"github.com/milesbxf/puppeteer/pkg/apis"
 	corev1alpha1 "github.com/milesbxf/puppeteer/pkg/apis/core/v1alpha1"
 	"github.com/monzo/typhon"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes/scheme"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/apiutil"
@@ -19,7 +21,8 @@ var Router = typhon.Router{}
 var log = logf.Log.WithName("storageHandler")
 
 func init() {
-	Router.POST("/v1alpha1/api/core/storage/upload/:id", handlePOSTStorageUpload)
+	Router.GET("/v1alpha1/api/core/storage/:id", handleGETStorageID)
+	Router.POST("/v1alpha1/api/core/storage/:id", handlePOSTStorageUpload)
 }
 
 // TODO: urgh, get rid of this package-level global crap and move into a struct
@@ -28,6 +31,41 @@ var rootPath string = ""
 func Init(storageRootPath string) {
 	rootPath = storageRootPath
 	log.Info("Initialised storage directory", "storage_directory", storageRootPath)
+}
+
+func handleGETStorageID(req typhon.Request) typhon.Response {
+	params := Router.Params(req)
+	id := params["id"]
+
+	log.Info("Received GET request for storage", "id", id)
+
+	k8sclient, err := setupK8sClient()
+	if err != nil {
+		log.Error(err, "setting up K8s client", "id", id)
+		return typhon.Response{Error: err}
+	}
+
+	ls := &corev1alpha1.LocalStorage{}
+	err = k8sclient.Get(context.Background(), types.NamespacedName{Name: id, Namespace: "default"}, ls)
+	if err == nil {
+		sgv := corev1alpha1.SchemeGroupVersion
+		resp := req.Response(corev1alpha1.StorageReference{
+			Status:               corev1alpha1.StorageStatusPresent,
+			GroupVersionResource: fmt.Sprintf("localstorage.%s.%s", sgv.Version, sgv.Group),
+			ID:                   ls.Name,
+		})
+		resp.StatusCode = 200
+		log.Info("localstorage obj found", "id", id, "response", resp)
+		return resp
+	} else if apierrors.IsNotFound(err) {
+		log.Info("localstorage obj not found", "id", id)
+		resp := typhon.Response{}
+		resp.StatusCode = 404
+		return resp
+	} else {
+		log.Error(err, "looking up local storage", "id", id)
+		return typhon.Response{Error: err}
+	}
 }
 
 func handlePOSTStorageUpload(req typhon.Request) typhon.Response {
