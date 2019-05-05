@@ -117,12 +117,12 @@ func (r *ReconcilePipelineInstance) Reconcile(request reconcile.Request) (reconc
 		return reconcile.Result{}, err
 	}
 
-	// Fetch the associated pipeline
-	pipeline := &corev1alpha1.Pipeline{}
-	err = r.Get(context.TODO(), types.NamespacedName{Name: instance.Spec.PipelineName, Namespace: instance.Namespace}, pipeline)
+	// Fetch the associated pipeline config
+	pipelineConfig := &corev1alpha1.PipelineConfig{}
+	err = r.Get(context.TODO(), types.NamespacedName{Name: instance.Spec.PipelineName, Namespace: instance.Namespace}, pipelineConfig)
 	if err != nil {
 		if errors.IsNotFound(err) {
-			err = fmt.Errorf("pipeline %s referenced in pipelineinstance %s doesn't exist", instance.Spec.PipelineName, instance.Name)
+			err = fmt.Errorf("pipeline config %s referenced in pipelineinstance %s doesn't exist", instance.Spec.PipelineName, instance.Name)
 			log.Error(err, "Error reconciling PipelineInstance ", logParams...)
 			return reconcile.Result{}, err
 		}
@@ -134,7 +134,7 @@ func (r *ReconcilePipelineInstance) Reconcile(request reconcile.Request) (reconc
 		innerLogParams := append(logParams, "pipeline_instance_input", key)
 
 		// Look up corresponding pipeline input
-		pipelineInput, ok := pipeline.Spec.Inputs[key]
+		pipelineInput, ok := pipelineConfig.Spec.Inputs[key]
 		if !ok {
 			err = fmt.Errorf("input %s referenced in pipelineinstance %s doesn't exist in pipeline %s", key, instance.Name, instance.Spec.PipelineName)
 			log.Error(err, "Error reconciling PipelineInstance ", innerLogParams...)
@@ -155,7 +155,7 @@ func (r *ReconcilePipelineInstance) Reconcile(request reconcile.Request) (reconc
 
 		if artifact.Status.Phase == corev1alpha1.ResolvedArtifact {
 			// Make sure a pipeline stage instance exists for each stage in sequence
-			for _, stage := range pipeline.Spec.Workflow.Stages {
+			for _, stage := range pipelineConfig.Spec.Workflow.Stages {
 				progressNextStage, err := r.reconcilePipelineStageInstance(instance, &stage)
 				if err != nil {
 					log.Error(err, "reconciling stage instance", append(innerLogParams, "artifact_name", input.Artifact.Name, "stage_name", stage.Name)...)

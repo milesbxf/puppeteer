@@ -20,9 +20,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-// EDIT THIS FILE!  THIS IS SCAFFOLDING FOR YOU TO OWN!
-// NOTE: json tags are required.  Any new fields you add must have json tags for the fields to be serialized.
-
 type PipelineInput struct {
 	Type   string `json:"type,omitempty"`
 	Config string `json:"config,omitempty"`
@@ -55,13 +52,13 @@ type Workflow struct {
 	Stages []PipelineStage          `json:"stages,omitempty"`
 }
 
-// PipelineSpec defines the desired state of Pipeline
-type PipelineSpec struct {
+// PipelineConfigSpec defines the desired state of PipelineConfig
+type PipelineConfigSpec struct {
 	Workflow `json:"workflow,omitempty"`
 }
 
-// PipelineStatus defines the observed state of Pipeline
-type PipelineStatus struct {
+// PipelineConfigStatus defines the observed state of PipelineConfig
+type PipelineConfigStatus struct {
 	// INSERT ADDITIONAL STATUS FIELD - define observed state of cluster
 	// Important: Run "make" to regenerate code after modifying this file
 }
@@ -69,25 +66,25 @@ type PipelineStatus struct {
 // +genclient
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
-// Pipeline is the Schema for the pipelines API
+// PipelineConfig is the Schema for the pipelineconfigs API
 // +k8s:openapi-gen=true
-type Pipeline struct {
+type PipelineConfig struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
-	Spec   PipelineSpec   `json:"spec,omitempty"`
-	Status PipelineStatus `json:"status,omitempty"`
+	Spec   PipelineConfigSpec   `json:"spec,omitempty"`
+	Status PipelineConfigStatus `json:"status,omitempty"`
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
-// PipelineList contains a list of Pipeline
-type PipelineList struct {
+// PipelineConfigList contains a list of PipelineConfig
+type PipelineConfigList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`
-	Items           []Pipeline `json:"items"`
+	Items           []PipelineConfig `json:"items"`
 }
 
 func init() {
-	SchemeBuilder.Register(&Pipeline{}, &PipelineList{})
+	SchemeBuilder.Register(&PipelineConfig{}, &PipelineConfigList{})
 }

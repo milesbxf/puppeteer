@@ -1,6 +1,6 @@
 ---
 apiVersion: core.puppeteer.milesbryant.co.uk/v1alpha1
-kind: Pipeline
+kind: PipelineConfig
 metadata:
   labels:
     controller-tools.k8s.io: "1.0"

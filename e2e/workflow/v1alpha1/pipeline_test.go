@@ -24,7 +24,7 @@ func TestSimpleBuildPipeline(t *testing.T) {
 	objs, err := e2e.LoadResourcesFromTestData("simple_build_pipeline.yaml")
 	g.Expect(err).NotTo(gomega.HaveOccurred(), "loading pipeline yaml")
 
-	pipeline, ok := objs[0].(*corev1alpha1.Pipeline)
+	pipeline, ok := objs[0].(*corev1alpha1.PipelineConfig)
 	pipeline.ObjectMeta.Namespace = rig.Namespace
 	g.Expect(ok).To(gomega.BeTrue(), "loading pipeline obj")
 	err = rig.K8s.Create(context.TODO(), pipeline)
