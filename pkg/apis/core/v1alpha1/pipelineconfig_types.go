@@ -25,26 +25,26 @@ type PipelineInputConfig struct {
 	Config string `json:"config,omitempty"`
 }
 
-type TaskInput struct {
+type TaskInputConfig struct {
 	From string `json:"from,omitempty"`
 	Path string `json:"path,omitempty"`
 }
 
-type TaskOutput struct {
+type TaskOutputConfig struct {
 	Type   string `json:"type,omitempty"`
 	Config string `json:"config,omitempty"`
 }
 
-type PipelineTask struct {
-	Image   string                `json:"image,omitempty"`
-	Inputs  map[string]TaskInput  `json:"inputs,omitempty"`
-	Shell   string                `json:"shell,omitempty"`
-	Outputs map[string]TaskOutput `json:"outputs,omitempty"`
+type TaskConfig struct {
+	Image   string                      `json:"image,omitempty"`
+	Inputs  map[string]TaskInputConfig  `json:"inputs,omitempty"`
+	Shell   string                      `json:"shell,omitempty"`
+	Outputs map[string]TaskOutputConfig `json:"outputs,omitempty"`
 }
 
 type StageConfig struct {
-	Name  string                  `json:"name,omitempty"`
-	Tasks map[string]PipelineTask `json:"tasks,omitempty"`
+	Name  string                `json:"name,omitempty"`
+	Tasks map[string]TaskConfig `json:"tasks,omitempty"`
 }
 
 type Workflow struct {
