@@ -1,0 +1,16 @@
+---
+apiVersion: core.puppeteer.milesbryant.co.uk/v1alpha1
+kind: Pipeline
+metadata:
+  labels:
+    controller-tools.k8s.io: "1.0"
+  name: simple-build-pipeline-1
+spec:
+  pipelineName: simple-build-pipeline
+  inputs:
+    scm-upstream:
+      type: git
+      config: |
+        {
+          "commit": "fe5f6368bb00aa955f5704b04782c730edd6c883"
+        }

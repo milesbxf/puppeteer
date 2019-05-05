@@ -1,0 +1,31 @@
+---
+apiVersion: core.puppeteer.milesbryant.co.uk/v1alpha1
+kind: PipelineConfig
+metadata:
+  labels:
+    controller-tools.k8s.io: "1.0"
+  name: simple-build-pipeline
+spec:
+  workflow:
+    inputs:
+      scm-upstream:
+        type: git
+        # This could also be "on-commit"
+        trigger: manual
+        config: |
+          {
+            "repository": "https://github.com/git-fixtures/basic"
+          }
+    stages:
+    - name: build
+      tasks:
+        build-image:
+          image: debian:buster-slim
+          inputs:
+            scm-upstream: {}
+          shell: |
+            #!/bin/bash
+            set -euxo pipefail
+            echo "Hello, Puppeteer!"
+            ls -alh
+          workingDir: /puppeteer-data/workspace
