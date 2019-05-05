@@ -22,6 +22,7 @@ import (
 
 // StageSpec defines the desired state of Stage
 type StageSpec struct {
+	Config *StageConfig `json:"config,omitempty"`
 }
 
 type StagePhase string

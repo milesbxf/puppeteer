@@ -21,6 +21,9 @@ func (r *ReconcilePipeline) reconcileStage(pipeline *corev1alpha1.Pipeline, stag
 			Name:      fmt.Sprintf("%s-%s-%d", pipeline.Name, stageConfig.Name, ordinal),
 			Namespace: pipeline.Namespace,
 		},
+		Spec: corev1alpha1.StageSpec{
+			Config: stageConfig,
+		},
 	}
 	if err := controllerutil.SetControllerReference(pipeline, stage, r.scheme); err != nil {
 		return false, err

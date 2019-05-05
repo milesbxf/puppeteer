@@ -27,6 +27,14 @@ spec:
         metadata:
           type: object
         spec:
+          properties:
+            config:
+              properties:
+                name:
+                  type: string
+                tasks:
+                  type: object
+              type: object
           type: object
         status:
           properties:

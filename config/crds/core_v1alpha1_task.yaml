@@ -27,8 +27,23 @@ spec:
         metadata:
           type: object
         spec:
+          properties:
+            config:
+              properties:
+                image:
+                  type: string
+                inputs:
+                  type: object
+                outputs:
+                  type: object
+                shell:
+                  type: string
+              type: object
           type: object
         status:
+          properties:
+            phase:
+              type: string
           type: object
   version: v1alpha1
 status:

@@ -18,12 +18,16 @@ package stage
 
 import (
 	"context"
+	"fmt"
 
 	corev1alpha1 "github.com/milesbxf/puppeteer/pkg/apis/core/v1alpha1"
 	"k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
+	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
@@ -78,9 +82,9 @@ type ReconcileStage struct {
 // +kubebuilder:rbac:groups=core.puppeteer.milesbryant.co.uk,resources=stages/status,verbs=get;update;patch
 func (r *ReconcileStage) Reconcile(request reconcile.Request) (reconcile.Result, error) {
 	logParams := []interface{}{"name", request.NamespacedName.String()}
-	// Fetch the Stage instance
-	instance := &corev1alpha1.Stage{}
-	err := r.Get(context.TODO(), request.NamespacedName, instance)
+	// Fetch the Stage
+	stage := &corev1alpha1.Stage{}
+	err := r.Get(context.TODO(), request.NamespacedName, stage)
 	if err != nil {
 		if errors.IsNotFound(err) {
 			// Object not found, return.  Created objects are automatically garbage collected.
@@ -91,10 +95,18 @@ func (r *ReconcileStage) Reconcile(request reconcile.Request) (reconcile.Result,
 		return reconcile.Result{}, err
 	}
 
+	for name, taskConfig := range stage.Spec.Config.Tasks {
+		err := r.reconcileTask(stage, name, &taskConfig)
+		if err != nil {
+			log.Error(err, "reconciling task", append(logParams, "task_name", name))
+			return reconcile.Result{}, err
+		}
+	}
+
 	phase := corev1alpha1.StageInProgress
-	if phase != instance.Status.Phase {
-		instance.Status.Phase = phase
-		err = r.Client.Update(context.Background(), instance)
+	if phase != stage.Status.Phase {
+		stage.Status.Phase = phase
+		err = r.Client.Update(context.Background(), stage)
 		if err != nil {
 			log.Error(err, "Error updating stage status", logParams...)
 			return reconcile.Result{}, err
@@ -102,4 +114,35 @@ func (r *ReconcileStage) Reconcile(request reconcile.Request) (reconcile.Result,
 	}
 
 	return reconcile.Result{}, nil
+}
+
+func (r *ReconcileStage) reconcileTask(stage *corev1alpha1.Stage, name string, config *corev1alpha1.TaskConfig) error {
+	ordinal := 1
+
+	task := &corev1alpha1.Task{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      fmt.Sprintf("%s-%s-%d", stage.Name, name, ordinal),
+			Namespace: stage.Namespace,
+		},
+		Spec: corev1alpha1.TaskSpec{
+			Config: config,
+		},
+	}
+
+	if err := controllerutil.SetControllerReference(stage, task, r.scheme); err != nil {
+		return err
+	}
+
+	found := &corev1alpha1.Task{}
+	err := r.Get(context.TODO(), types.NamespacedName{Name: task.Name, Namespace: task.Namespace}, found)
+	if err != nil && errors.IsNotFound(err) {
+
+		log.Info("creating task", "namespace", task.Namespace, "name", task.Name)
+		err = r.Create(context.TODO(), task)
+		return err
+	} else if err != nil {
+		return err
+	}
+
+	return nil
 }

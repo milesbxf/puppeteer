@@ -91,9 +91,22 @@ func TestSimpleBuildPipeline(t *testing.T) {
 			}
 			return stageInstance.Status.Phase, nil
 		},
-		"2m",
+		"30s",
 	).Should(gomega.Equal(corev1alpha1.StageInProgress), "waiting for pipeline stage in progress")
-	// First stage is triggered (Stage)
+	t.Logf("Pipeline stage is in progress")
+
+	g.Eventually(
+		func() (corev1alpha1.TaskPhase, error) {
+			stageInstance := &corev1alpha1.Task{}
+			err = rig.K8s.Get(context.Background(), types.NamespacedName{Name: pipeline.Name + "-build-1-build-image-1", Namespace: rig.Namespace}, stageInstance)
+			if err != nil {
+				return "", err
+			}
+			return stageInstance.Status.Phase, nil
+		},
+		"30s",
+	).Should(gomega.Equal(corev1alpha1.TaskInProgress), "waiting for task in progress")
+	t.Logf("Task is in progress")
 	// Spins up job with configured image and shell script
 	// Build sidecar pulls local storage down into a shared volume
 	// Waits for attached job to finish

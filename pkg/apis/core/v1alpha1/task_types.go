@@ -20,19 +20,22 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-// EDIT THIS FILE!  THIS IS SCAFFOLDING FOR YOU TO OWN!
-// NOTE: json tags are required.  Any new fields you add must have json tags for the fields to be serialized.
-
 // TaskSpec defines the desired state of Task
 type TaskSpec struct {
-	// INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
-	// Important: Run "make" to regenerate code after modifying this file
+	Config *TaskConfig `json:"config,omitempty"`
 }
+
+type TaskPhase string
+
+const (
+	TaskInProgress TaskPhase = "InProgress"
+	TaskError      TaskPhase = "Error"
+	TaskComplete   TaskPhase = "Complete"
+)
 
 // TaskStatus defines the observed state of Task
 type TaskStatus struct {
-	// INSERT ADDITIONAL STATUS FIELD - define observed state of cluster
-	// Important: Run "make" to regenerate code after modifying this file
+	Phase TaskPhase `json:"phase,omitempty"`
 }
 
 // +genclient
