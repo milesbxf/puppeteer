@@ -30,6 +30,7 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
+	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
@@ -69,6 +70,14 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 		return err
 	}
 
+	// Watch for artifacts this pipeline owns
+	err = c.Watch(&source.Kind{Type: &corev1alpha1.Artifact{}}, &handler.EnqueueRequestForOwner{
+		IsController: true,
+		OwnerType:    &corev1alpha1.PipelineInstance{},
+	})
+	if err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -133,92 +142,121 @@ func (r *ReconcilePipelineInstance) Reconcile(request reconcile.Request) (reconc
 		}
 
 		if input.Artifact == nil {
-			// No artifact attached, we need to find or create one
+			err := r.createArtifactForPipelineInstanceInput(instance, key, input, &pipelineInput, innerLogParams)
+			return reconcile.Result{}, err
+		}
 
-			switch input.Type {
-			case "git":
-				pipelineInputConfig, err := pluginsv1alpha1.GitPipelineInputConfigFromJSON(pipelineInput.Config)
+		artifact := &corev1alpha1.Artifact{}
+		err = r.Client.Get(context.Background(), types.NamespacedName{Name: input.Artifact.Name, Namespace: instance.Namespace}, artifact)
+		if err != nil {
+			log.Error(err, "lookup artifact reference", append(innerLogParams, "artifact_name", input.Artifact.Name)...)
+			return reconcile.Result{}, err
+		}
+
+		if artifact.Status.Phase == corev1alpha1.ResolvedArtifact {
+			// Make sure a pipeline stage instance exists for each stage in sequence
+			for _, stage := range pipeline.Spec.Workflow.Stages {
+				progressNextStage, err := r.reconcilePipelineStageInstance(instance, &stage)
 				if err != nil {
-					log.Error(err, "Error parsing pipeline input config", append(innerLogParams, "pipeline_input_config", pipelineInput.Config)...)
+					log.Error(err, "reconciling stage instance", append(innerLogParams, "artifact_name", input.Artifact.Name, "stage_name", stage.Name)...)
 					return reconcile.Result{}, err
 				}
-
-				pipelineInstanceInputConfig, err := pluginsv1alpha1.GitPipelineInstanceInputConfigFromJSON(input.Config)
-				if err != nil {
-					log.Error(err, "Error parsing pipeline instance input config", append(innerLogParams, "pipeline_instance_input_config", input.Config)...)
-					return reconcile.Result{}, err
+				if !progressNextStage {
+					break
 				}
-
-				gitSpec := &pluginsv1alpha1.GitArtifactResolutionSpec{
-					RepositoryURL: pipelineInputConfig.Repository,
-					CommitSHA:     pipelineInstanceInputConfig.Commit,
-				}
-
-				artifactConfig := gitSpec.ToJSON()
-
-				configHash := fmt.Sprintf("%x", sha256.Sum224([]byte(artifactConfig)))
-				artifactName := fmt.Sprintf("%s-%s", input.Type, configHash)
-				innerLogParams := append(logParams, "pipeline_instance_input", key, "artifact_name", artifactName)
-
-				log.V(2).Info("No artifact attached to PipelineInstance, looking for existing one", innerLogParams...)
-
-				artifact := &corev1alpha1.Artifact{}
-				err = r.Client.Get(context.Background(), types.NamespacedName{
-					Name:      artifactName,
-					Namespace: instance.Namespace,
-				}, artifact)
-
-				if err != nil && !apierrors.IsNotFound(err) {
-					log.Error(err, "Error looking up Artifact for PipelineInstance", innerLogParams...)
-					return reconcile.Result{}, err
-				}
-
-				if apierrors.IsNotFound(err) {
-					log.V(2).Info("Didn't find Artifact for PipelineInstance, creating it", innerLogParams...)
-
-					source := corev1alpha1.ArtifactSource{
-						Type:   input.Type,
-						Config: artifactConfig,
-					}
-
-					artifact = &corev1alpha1.Artifact{
-						ObjectMeta: metav1.ObjectMeta{
-							Name:      artifactName,
-							Namespace: instance.Namespace,
-							Labels: map[string]string{
-								"v1alpha1.core.puppeteer.milesbryant.co.uk/source-type":        input.Type,
-								"v1alpha1.core.puppeteer.milesbryant.co.uk/source-config-hash": configHash,
-							}},
-						Spec: corev1alpha1.ArtifactSpec{
-							Source: source,
-						},
-					}
-					err := r.Client.Create(context.Background(), artifact)
-					if err != nil {
-						log.Error(err, "Error creating Artifact for PipelineInstance", innerLogParams...)
-						return reconcile.Result{}, err
-					}
-
-				}
-				instance.Spec.Inputs[key].Artifact = &corev1alpha1.PipelineInstanceArtifact{
-					Name: artifact.Name,
-				}
-
-				log.V(2).Info("Updating PipelineInstance Input reference to Artifact", innerLogParams...)
-				err = r.Client.Update(context.Background(), instance)
-				if err != nil {
-					log.Error(err, "Error updating PipelineInstance with Artifact reference", innerLogParams...)
-					return reconcile.Result{}, err
-				}
-			default:
-				err := fmt.Errorf("unknown pipeline input type %s", input.Type)
-				log.Error(err, "Couldn't create Artifact for pipelineinstance", logParams...)
-				return reconcile.Result{}, err
 			}
-
-			return reconcile.Result{}, nil
 		}
 	}
 
 	return reconcile.Result{}, nil
+}
+
+func (r *ReconcilePipelineInstance) createArtifactForPipelineInstanceInput(instance *corev1alpha1.PipelineInstance, inputName string, pipelineInstanceInput *corev1alpha1.PipelineInstanceInput, pipelineInput *corev1alpha1.PipelineInput, logParams []interface{}) error {
+	// No artifact attached, we need to find or create one
+
+	switch pipelineInstanceInput.Type {
+	case "git":
+		pipelineInputConfig, err := pluginsv1alpha1.GitPipelineInputConfigFromJSON(pipelineInput.Config)
+		if err != nil {
+			log.Error(err, "Error parsing pipeline input config", append(logParams, "pipeline_input_config", pipelineInput.Config)...)
+			return err
+		}
+
+		pipelineInstanceInputConfig, err := pluginsv1alpha1.GitPipelineInstanceInputConfigFromJSON(pipelineInstanceInput.Config)
+		if err != nil {
+			log.Error(err, "Error parsing pipeline instance input config", append(logParams, "pipeline_instance_input_config", pipelineInstanceInput.Config)...)
+			return err
+		}
+
+		gitSpec := &pluginsv1alpha1.GitArtifactResolutionSpec{
+			RepositoryURL: pipelineInputConfig.Repository,
+			CommitSHA:     pipelineInstanceInputConfig.Commit,
+		}
+
+		artifactConfig := gitSpec.ToJSON()
+
+		configHash := fmt.Sprintf("%x", sha256.Sum224([]byte(artifactConfig)))
+		artifactName := fmt.Sprintf("%s-%s", pipelineInstanceInput.Type, configHash)
+		logParams := append(logParams, "pipeline_instance_input", inputName, "artifact_name", artifactName)
+
+		log.V(2).Info("No artifact attached to PipelineInstance, looking for existing one", logParams...)
+
+		artifact := &corev1alpha1.Artifact{}
+		err = r.Client.Get(context.Background(), types.NamespacedName{
+			Name:      artifactName,
+			Namespace: instance.Namespace,
+		}, artifact)
+
+		if err != nil && !apierrors.IsNotFound(err) {
+			log.Error(err, "Error looking up Artifact for PipelineInstance", logParams...)
+			return err
+		}
+
+		if apierrors.IsNotFound(err) {
+			log.V(2).Info("Didn't find Artifact for PipelineInstance, creating it", logParams...)
+
+			source := corev1alpha1.ArtifactSource{
+				Type:   pipelineInstanceInput.Type,
+				Config: artifactConfig,
+			}
+
+			artifact = &corev1alpha1.Artifact{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      artifactName,
+					Namespace: instance.Namespace,
+					Labels: map[string]string{
+						"v1alpha1.core.puppeteer.milesbryant.co.uk/source-type":        pipelineInstanceInput.Type,
+						"v1alpha1.core.puppeteer.milesbryant.co.uk/source-config-hash": configHash,
+					}},
+				Spec: corev1alpha1.ArtifactSpec{
+					Source: source,
+				},
+			}
+			if err := controllerutil.SetControllerReference(instance, artifact, r.scheme); err != nil {
+				return err
+			}
+			err := r.Client.Create(context.Background(), artifact)
+			if err != nil {
+				log.Error(err, "Error creating Artifact for PipelineInstance", logParams...)
+				return err
+			}
+
+		}
+		instance.Spec.Inputs[inputName].Artifact = &corev1alpha1.PipelineInstanceArtifact{
+			Name: artifact.Name,
+		}
+
+		log.V(2).Info("Updating PipelineInstance Input reference to Artifact", logParams...)
+		err = r.Client.Update(context.Background(), instance)
+		if err != nil {
+			log.Error(err, "Error updating PipelineInstance with Artifact reference", logParams...)
+			return err
+		}
+	default:
+		err := fmt.Errorf("unknown pipeline input type %s", pipelineInstanceInput.Type)
+		log.Error(err, "Couldn't create Artifact for pipelineinstance", logParams...)
+		return err
+	}
+
+	return nil
 }

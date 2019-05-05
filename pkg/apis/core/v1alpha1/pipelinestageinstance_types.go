@@ -29,10 +29,17 @@ type PipelineStageInstanceSpec struct {
 	// Important: Run "make" to regenerate code after modifying this file
 }
 
+type PipelineStageInstancePhase string
+
+const (
+	PipelineStageInstanceInProgress PipelineStageInstancePhase = "InProgress"
+	PipelineStageInstanceError      PipelineStageInstancePhase = "Error"
+	PipelineStageInstanceComplete   PipelineStageInstancePhase = "Complete"
+)
+
 // PipelineStageInstanceStatus defines the observed state of PipelineStageInstance
 type PipelineStageInstanceStatus struct {
-	// INSERT ADDITIONAL STATUS FIELD - define observed state of cluster
-	// Important: Run "make" to regenerate code after modifying this file
+	Phase PipelineStageInstancePhase `json:"phase,omitempty"`
 }
 
 // +genclient

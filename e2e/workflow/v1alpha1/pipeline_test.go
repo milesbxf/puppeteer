@@ -82,10 +82,17 @@ func TestSimpleBuildPipeline(t *testing.T) {
 	g.Expect(err).NotTo(gomega.HaveOccurred(), "getting artifact")
 	t.Logf("Got artifact for pipeline instance input: '%s'", artifact.Name)
 
-	// Artifact controller triggers Git plugin to clone commit and put in local storage
-
-	// Once artifact is "complete" we move on
-
+	g.Eventually(
+		func() (corev1alpha1.PipelineStageInstancePhase, error) {
+			stageInstance := &corev1alpha1.PipelineStageInstance{}
+			err = rig.K8s.Get(context.Background(), types.NamespacedName{Name: instance.Name + "-build-1", Namespace: rig.Namespace}, stageInstance)
+			if err != nil {
+				return "", err
+			}
+			return stageInstance.Status.Phase, nil
+		},
+		"2m",
+	).Should(gomega.Equal(corev1alpha1.PipelineStageInstanceInProgress), "waiting for pipeline stage in progress")
 	// First stage is triggered (PipelineStageInstance)
 	// Spins up job with configured image and shell script
 	// Build sidecar pulls local storage down into a shared volume

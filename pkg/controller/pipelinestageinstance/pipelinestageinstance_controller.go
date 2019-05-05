@@ -18,18 +18,12 @@ package pipelinestageinstance
 
 import (
 	"context"
-	"reflect"
 
 	corev1alpha1 "github.com/milesbxf/puppeteer/pkg/apis/core/v1alpha1"
-	appsv1 "k8s.io/api/apps/v1"
-	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
-	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
@@ -69,16 +63,6 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 		return err
 	}
 
-	// TODO(user): Modify this to be the types you create
-	// Uncomment watch a Deployment created by PipelineStageInstance - change this for objects you create
-	err = c.Watch(&source.Kind{Type: &appsv1.Deployment{}}, &handler.EnqueueRequestForOwner{
-		IsController: true,
-		OwnerType:    &corev1alpha1.PipelineStageInstance{},
-	})
-	if err != nil {
-		return err
-	}
-
 	return nil
 }
 
@@ -100,6 +84,7 @@ type ReconcilePipelineStageInstance struct {
 // +kubebuilder:rbac:groups=core.puppeteer.milesbryant.co.uk,resources=pipelinestageinstances,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=core.puppeteer.milesbryant.co.uk,resources=pipelinestageinstances/status,verbs=get;update;patch
 func (r *ReconcilePipelineStageInstance) Reconcile(request reconcile.Request) (reconcile.Result, error) {
+	logParams := []interface{}{"pipeline_stage_instance_name", request.NamespacedName.String()}
 	// Fetch the PipelineStageInstance instance
 	instance := &corev1alpha1.PipelineStageInstance{}
 	err := r.Get(context.TODO(), request.NamespacedName, instance)
@@ -113,55 +98,15 @@ func (r *ReconcilePipelineStageInstance) Reconcile(request reconcile.Request) (r
 		return reconcile.Result{}, err
 	}
 
-	// TODO(user): Change this to be the object type created by your controller
-	// Define the desired Deployment object
-	deploy := &appsv1.Deployment{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      instance.Name + "-deployment",
-			Namespace: instance.Namespace,
-		},
-		Spec: appsv1.DeploymentSpec{
-			Selector: &metav1.LabelSelector{
-				MatchLabels: map[string]string{"deployment": instance.Name + "-deployment"},
-			},
-			Template: corev1.PodTemplateSpec{
-				ObjectMeta: metav1.ObjectMeta{Labels: map[string]string{"deployment": instance.Name + "-deployment"}},
-				Spec: corev1.PodSpec{
-					Containers: []corev1.Container{
-						{
-							Name:  "nginx",
-							Image: "nginx",
-						},
-					},
-				},
-			},
-		},
-	}
-	if err := controllerutil.SetControllerReference(instance, deploy, r.scheme); err != nil {
-		return reconcile.Result{}, err
-	}
-
-	// TODO(user): Change this for the object type created by your controller
-	// Check if the Deployment already exists
-	found := &appsv1.Deployment{}
-	err = r.Get(context.TODO(), types.NamespacedName{Name: deploy.Name, Namespace: deploy.Namespace}, found)
-	if err != nil && errors.IsNotFound(err) {
-		log.Info("Creating Deployment", "namespace", deploy.Namespace, "name", deploy.Name)
-		err = r.Create(context.TODO(), deploy)
-		return reconcile.Result{}, err
-	} else if err != nil {
-		return reconcile.Result{}, err
-	}
-
-	// TODO(user): Change this for the object type created by your controller
-	// Update the found object and write the result back if there are any changes
-	if !reflect.DeepEqual(deploy.Spec, found.Spec) {
-		found.Spec = deploy.Spec
-		log.Info("Updating Deployment", "namespace", deploy.Namespace, "name", deploy.Name)
-		err = r.Update(context.TODO(), found)
+	phase := corev1alpha1.PipelineStageInstanceInProgress
+	if phase != instance.Status.Phase {
+		instance.Status.Phase = phase
+		err = r.Client.Update(context.Background(), instance)
 		if err != nil {
+			log.Error(err, "Error updating pipelinestageinstance status", logParams...)
 			return reconcile.Result{}, err
 		}
 	}
+
 	return reconcile.Result{}, nil
 }
