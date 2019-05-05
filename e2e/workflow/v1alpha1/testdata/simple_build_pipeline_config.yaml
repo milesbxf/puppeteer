@@ -31,7 +31,9 @@ spec:
           shell: |
             #!/bin/bash
             set -euxo pipefail
+            echo "Hello, Puppeteer!"
             make docker-build
+          workingDir: /go/src/github.com/milesbxf/puppeteer
           outputs:
             image:
               type: docker

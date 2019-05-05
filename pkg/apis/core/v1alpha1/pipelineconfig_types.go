@@ -36,10 +36,11 @@ type TaskOutputConfig struct {
 }
 
 type TaskConfig struct {
-	Image   string                      `json:"image,omitempty"`
-	Inputs  map[string]TaskInputConfig  `json:"inputs,omitempty"`
-	Shell   string                      `json:"shell,omitempty"`
-	Outputs map[string]TaskOutputConfig `json:"outputs,omitempty"`
+	Image      string                      `json:"image,omitempty"`
+	Inputs     map[string]TaskInputConfig  `json:"inputs,omitempty"`
+	Shell      string                      `json:"shell,omitempty"`
+	WorkingDir string                      `json:"workingDir,omitempty"`
+	Outputs    map[string]TaskOutputConfig `json:"outputs,omitempty"`
 }
 
 type StageConfig struct {

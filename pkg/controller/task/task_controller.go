@@ -20,10 +20,16 @@ import (
 	"context"
 
 	corev1alpha1 "github.com/milesbxf/puppeteer/pkg/apis/core/v1alpha1"
+	batchv1 "k8s.io/api/batch/v1"
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/types"
+	utilpointer "k8s.io/kubernetes/pkg/util/pointer"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
+	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
@@ -97,11 +103,135 @@ func (r *ReconcileTask) Reconcile(request reconcile.Request) (reconcile.Result, 
 		return reconcile.Result{}, err
 	}
 
-	task.Status.Phase = corev1alpha1.TaskInProgress
-	err = r.Update(context.Background(), task)
+	if task.Spec.Config == nil {
+		return reconcile.Result{}, nil
+	}
+
+	err = r.reconcileJob(task)
 	if err != nil {
 		return reconcile.Result{}, err
 	}
 
 	return reconcile.Result{}, nil
+}
+
+func (r *ReconcileTask) reconcileJob(task *corev1alpha1.Task) error {
+	initVolume, initMount, taskEntrypoint, err := r.reconcileInitConfigMap(task)
+	if err != nil {
+		return err
+	}
+
+	job := &batchv1.Job{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      task.Name,
+			Namespace: task.Namespace,
+		},
+		Spec: batchv1.JobSpec{
+			Parallelism:  utilpointer.Int32Ptr(1),
+			BackoffLimit: utilpointer.Int32Ptr(0),
+			Template: corev1.PodTemplateSpec{
+				ObjectMeta: metav1.ObjectMeta{},
+				Spec: corev1.PodSpec{
+					Volumes: []corev1.Volume{
+						initVolume,
+						{
+							Name: "puppeteer-data",
+							VolumeSource: corev1.VolumeSource{
+								EmptyDir: &corev1.EmptyDirVolumeSource{},
+							},
+						},
+					},
+					Containers: []corev1.Container{
+						{
+							Name:  task.Name,
+							Image: task.Spec.Config.Image,
+							Command: []string{
+								"bash",
+								taskEntrypoint,
+							},
+							// TODO: what if this is relative? what if it's not specified?
+							WorkingDir: task.Spec.Config.WorkingDir,
+							VolumeMounts: []corev1.VolumeMount{
+								{
+									Name:      "puppeteer-data",
+									MountPath: "/puppeteer-data",
+								},
+								initMount,
+							},
+						},
+					},
+					RestartPolicy: corev1.RestartPolicyNever,
+				},
+			},
+		},
+	}
+
+	if err := controllerutil.SetControllerReference(task, job, r.scheme); err != nil {
+		return err
+	}
+
+	found := &batchv1.Job{}
+	err = r.Get(context.TODO(), types.NamespacedName{Name: job.Name, Namespace: job.Namespace}, found)
+	if err != nil && errors.IsNotFound(err) {
+		log.Info("creating job", "namespace", job.Namespace, "name", job.Name)
+		err = r.Create(context.TODO(), job)
+		if err != nil {
+			return err
+		}
+		task.Status.Phase = corev1alpha1.TaskInProgress
+		err = r.Update(context.Background(), task)
+		if err != nil {
+			return err
+		}
+		return nil
+	} else if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (r *ReconcileTask) reconcileInitConfigMap(task *corev1alpha1.Task) (corev1.Volume, corev1.VolumeMount, string, error) {
+	configmap := &corev1.ConfigMap{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      task.Name + "-init",
+			Namespace: task.Namespace,
+		},
+		Data: map[string]string{
+			"entrypoint.sh": task.Spec.Config.Shell,
+		},
+	}
+	if err := controllerutil.SetControllerReference(task, configmap, r.scheme); err != nil {
+		return corev1.Volume{}, corev1.VolumeMount{}, "", err
+	}
+
+	found := &corev1.ConfigMap{}
+	err := r.Get(context.TODO(), types.NamespacedName{Name: configmap.Name, Namespace: configmap.Namespace}, found)
+	if err != nil && errors.IsNotFound(err) {
+		log.Info("creating init configmap", "namespace", configmap.Namespace, "name", configmap.Name)
+		err = r.Create(context.TODO(), configmap)
+		if err != nil {
+			return corev1.Volume{}, corev1.VolumeMount{}, "", err
+		}
+	} else if err != nil {
+		return corev1.Volume{}, corev1.VolumeMount{}, "", err
+	}
+	volume := corev1.Volume{
+		Name: "puppeteer-init",
+		VolumeSource: corev1.VolumeSource{
+			ConfigMap: &corev1.ConfigMapVolumeSource{
+				LocalObjectReference: corev1.LocalObjectReference{
+					Name: configmap.Name,
+				},
+			},
+		},
+	}
+
+	mount := corev1.VolumeMount{
+		Name:      volume.Name,
+		ReadOnly:  true,
+		MountPath: "/puppeteer-init",
+	}
+
+	return volume, mount, "/puppeteer-init/entrypoint.sh", nil
 }
