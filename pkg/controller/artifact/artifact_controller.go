@@ -30,6 +30,7 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
+	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
@@ -65,6 +66,15 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 
 	// Watch for changes to Artifact
 	err = c.Watch(&source.Kind{Type: &corev1alpha1.Artifact{}}, &handler.EnqueueRequestForObject{})
+	if err != nil {
+		return err
+	}
+
+	err = c.Watch(&source.Kind{Type: &pluginsv1alpha1.GitArtifactResolution{}}, &handler.EnqueueRequestForOwner{
+		IsController: true,
+		OwnerType:    &corev1alpha1.Artifact{},
+	})
+
 	if err != nil {
 		return err
 	}
@@ -112,9 +122,9 @@ func (r *ReconcileArtifact) Reconcile(request reconcile.Request) (reconcile.Resu
 	case instance.Spec.Source.Type == "":
 		log.V(1).Info("Artifact has missing source type", logParams...)
 		phase = corev1alpha1.InvalidArtifact
-	case instance.Spec.Source.Type != "" && instance.Spec.Reference == "":
+	case instance.Spec.Source.Type != "" && instance.Status.Reference == nil:
 		phase = corev1alpha1.UnresolvedArtifact
-	case instance.Spec.Source.Type != "" && instance.Spec.Reference != "":
+	case instance.Spec.Source.Type != "" && instance.Status.Reference != nil:
 		phase = corev1alpha1.ResolvedArtifact
 	default:
 		phase = corev1alpha1.InvalidArtifact
@@ -137,36 +147,58 @@ func (r *ReconcileArtifact) Reconcile(request reconcile.Request) (reconcile.Resu
 		// TODO: make this dynamically look up a plugin
 		switch instance.Spec.Source.Type {
 		case "git":
-
+			gitArtifactResolution := &pluginsv1alpha1.GitArtifactResolution{}
 			// Check if a GitArtifactResolution already exists
-			err := r.Client.Get(context.Background(), types.NamespacedName{Name: instance.Name, Namespace: instance.Namespace}, &pluginsv1alpha1.GitArtifactResolution{})
+			err := r.Client.Get(context.Background(), types.NamespacedName{Name: instance.Name, Namespace: instance.Namespace}, gitArtifactResolution)
+
 			switch {
 			case err == nil:
-				log.V(3).Info("GitArtifactResolution already exists, not creating", logParams...)
+				log.V(3).Info("Found gitartifactresolution", logParams...)
+
+				switch gitArtifactResolution.Status.Phase {
+				case pluginsv1alpha1.GitArtifactResolutionResolved:
+					instance.Status.Reference = gitArtifactResolution.Status.Reference
+					err = r.Client.Update(context.Background(), instance)
+					if err != nil {
+						log.Error(err, "couldn't update artifact reference", logParams...)
+						return reconcile.Result{}, err
+					}
+				default:
+					log.V(3).Info("gitartifactresolution resolution still in progress", logParams...)
+				}
+
 				return reconcile.Result{}, nil
-			case !apierrors.IsNotFound(err):
+
+			case apierrors.IsNotFound(err):
+				// Parse config into a spec
+				gitSpec := &pluginsv1alpha1.GitArtifactResolutionSpec{}
+				err = json.Unmarshal([]byte(instance.Spec.Source.Config), gitSpec)
+				if err != nil {
+					log.Error(err, "Couldn't parse Artifact source config", append(logParams, "artifact_source_config", instance.Spec.Source.Type)...)
+					return reconcile.Result{}, err
+				}
+
+				gitResolution := &pluginsv1alpha1.GitArtifactResolution{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      instance.Name,
+						Namespace: instance.Namespace,
+					},
+					Spec: gitSpec,
+				}
+
+				if err := controllerutil.SetControllerReference(instance, gitResolution, r.scheme); err != nil {
+					log.Error(err, "failed to set controller reference", logParams...)
+					return reconcile.Result{}, err
+				}
+
+				err = r.Client.Create(context.Background(), gitResolution)
+				if err != nil {
+					log.Error(err, "Couldn't create GitResolutionArtifact", logParams...)
+					return reconcile.Result{}, err
+				}
+
+			default:
 				log.Error(err, "Couldn't look up GitResolutionArtifact", logParams...)
-				return reconcile.Result{}, err
-			}
-
-			// Parse config into a spec
-			gitSpec := &pluginsv1alpha1.GitArtifactResolutionSpec{}
-			err = json.Unmarshal([]byte(instance.Spec.Source.Config), gitSpec)
-			if err != nil {
-				log.Error(err, "Couldn't parse Artifact source config", append(logParams, "artifact_source_config", instance.Spec.Source.Type)...)
-				return reconcile.Result{}, err
-			}
-
-			gitResolution := &pluginsv1alpha1.GitArtifactResolution{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      instance.Name,
-					Namespace: instance.Namespace,
-				},
-				Spec: gitSpec,
-			}
-			err = r.Client.Create(context.Background(), gitResolution)
-			if err != nil {
-				log.Error(err, "Couldn't create GitResolutionArtifact", logParams...)
 				return reconcile.Result{}, err
 			}
 

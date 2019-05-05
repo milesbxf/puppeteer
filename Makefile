@@ -12,10 +12,6 @@ test: generate fmt vet manifests
 manager: generate fmt vet
 	go build -o bin/manager github.com/milesbxf/puppeteer/cmd/manager
 
-plugin_gitsource:
-	mkdir -p bin/plugins
-	go build -o bin/plugins/gitsource_job github.com/milesbxf/puppeteer/cmd/plugins/gitsource/job
-
 # Run against the configured Kubernetes cluster in ~/.kube/config
 run: generate fmt vet
 	go run ./cmd/manager/main.go

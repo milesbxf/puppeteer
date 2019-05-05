@@ -19,6 +19,7 @@ package v1alpha1
 import (
 	"encoding/json"
 
+	corev1alpha1 "github.com/milesbxf/puppeteer/pkg/apis/core/v1alpha1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -56,10 +57,17 @@ func (g GitArtifactResolutionSpec) ToJSON() string {
 	return string(bytes)
 }
 
+type GitArtifactResolutionPhase string
+
+const (
+	GitArtifactResolutionInProgress GitArtifactResolutionPhase = "InProgress"
+	GitArtifactResolutionResolved   GitArtifactResolutionPhase = "Resolved"
+)
+
 // GitArtifactResolutionStatus defines the observed state of GitArtifactResolution
 type GitArtifactResolutionStatus struct {
-	// INSERT ADDITIONAL STATUS FIELD - define observed state of cluster
-	// Important: Run "make" to regenerate code after modifying this file
+	Phase     GitArtifactResolutionPhase     `json:"phase,omitempty"`
+	Reference *corev1alpha1.StorageReference `json:"reference,omitempty"`
 }
 
 // +genclient

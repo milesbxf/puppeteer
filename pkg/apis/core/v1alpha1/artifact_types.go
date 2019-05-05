@@ -28,10 +28,17 @@ const (
 	ResolvedArtifact   ArtifactPhase = "Resolved"
 )
 
-type StorageResponse struct {
-	Status               string `json:"status"`
-	GroupVersionResource string `json:"group_version_resource"`
-	Reference            string `json:"reference"`
+type StorageStatus string
+
+const (
+	StorageStatusPresent StorageStatus = "Present"
+	StorageStatusMissing StorageStatus = "Missing"
+)
+
+type StorageReference struct {
+	Status               StorageStatus `json:"status,omitempty"`
+	GroupVersionResource string        `json:"groupVersionResource,omitempty"`
+	ID                   string        `json:"id,omitempty"`
 }
 
 type ArtifactSource struct {
@@ -41,14 +48,13 @@ type ArtifactSource struct {
 
 // ArtifactSpec defines the desired state of Artifact
 type ArtifactSpec struct {
-	Source               ArtifactSource `json:"source,omitempty"`
-	GroupVersionResource string         `json:"group_version_resource,omitempty"`
-	Reference            string         `json:"reference,omitempty"`
+	Source ArtifactSource `json:"source,omitempty"`
 }
 
 // ArtifactStatus defines the observed state of Artifact
 type ArtifactStatus struct {
-	Phase ArtifactPhase `json:"phase,omitempty"`
+	Phase     ArtifactPhase     `json:"phase,omitempty"`
+	Reference *StorageReference `json:"reference,omitempty"`
 }
 
 // +genclient

@@ -28,8 +28,6 @@ spec:
           type: object
         spec:
           properties:
-            reference:
-              type: string
             source:
               properties:
                 config:
@@ -42,6 +40,15 @@ spec:
           properties:
             phase:
               type: string
+            reference:
+              properties:
+                groupVersionResource:
+                  type: string
+                id:
+                  type: string
+                status:
+                  type: string
+              type: object
           type: object
   version: v1alpha1
 status:

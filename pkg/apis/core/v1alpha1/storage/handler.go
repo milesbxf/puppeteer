@@ -16,9 +16,18 @@ import (
 )
 
 var Router = typhon.Router{}
+var log = logf.Log.WithName("storageHandler")
 
 func init() {
 	Router.POST("/v1alpha1/api/core/storage/upload/:id", handlePOSTStorageUpload)
+}
+
+// TODO: urgh, get rid of this package-level global crap and move into a struct
+var rootPath string = ""
+
+func Init(storageRootPath string) {
+	rootPath = storageRootPath
+	log.Info("Initialised storage directory", "storage_directory", storageRootPath)
 }
 
 func handlePOSTStorageUpload(req typhon.Request) typhon.Response {
@@ -26,7 +35,6 @@ func handlePOSTStorageUpload(req typhon.Request) typhon.Response {
 	params := Router.Params(req)
 	id := params["id"]
 
-	log := logf.Log.WithName("handlePOSTStorageUpload")
 	log.Info("Received file upload request", "id", id)
 
 	req.ParseMultipartForm(32 << 30)
@@ -37,7 +45,7 @@ func handlePOSTStorageUpload(req typhon.Request) typhon.Response {
 	}
 	defer uploadReader.Close()
 
-	err = Store(uploadReader, handler.Filename)
+	err = Store(rootPath, uploadReader, handler.Filename)
 	if err != nil {
 		log.Error(err, "Error writing file")
 		return typhon.Response{Error: err}
@@ -52,10 +60,10 @@ func handlePOSTStorageUpload(req typhon.Request) typhon.Response {
 
 	sgv := corev1alpha1.SchemeGroupVersion
 
-	resp := req.Response(corev1alpha1.StorageResponse{
-		Status:               "ok",
+	resp := req.Response(corev1alpha1.StorageReference{
+		Status:               corev1alpha1.StorageStatusPresent,
 		GroupVersionResource: fmt.Sprintf("localstorage.%s.%s", sgv.Version, sgv.Group),
-		Reference:            obj.ObjectMeta.Name,
+		ID:                   obj.ObjectMeta.Name,
 	})
 	resp.StatusCode = 201
 	return resp

@@ -11,8 +11,6 @@ COPY vendor/ vendor/
 RUN mkdir -p bin
 RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -a -o bin/manager github.com/milesbxf/puppeteer/cmd/manager
 
-RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -a -o bin/plugin_gitsource_job github.com/milesbxf/puppeteer/cmd/plugins/gitsource/job
-
 # Copy the controller-manager into a thin image
 FROM debian:buster-slim
 

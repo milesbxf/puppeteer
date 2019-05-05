@@ -200,7 +200,9 @@ func (r *ReconcilePipelineInstance) Reconcile(request reconcile.Request) (reconc
 					}
 
 				}
-				instance.Spec.Inputs[key].Artifact = &corev1alpha1.PipelineInstanceArtifact{}
+				instance.Spec.Inputs[key].Artifact = &corev1alpha1.PipelineInstanceArtifact{
+					Name: artifact.Name,
+				}
 
 				log.V(2).Info("Updating PipelineInstance Input reference to Artifact", innerLogParams...)
 				err = r.Client.Update(context.Background(), instance)
