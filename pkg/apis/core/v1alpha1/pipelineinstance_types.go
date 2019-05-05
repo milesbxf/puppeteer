@@ -32,7 +32,8 @@ type PipelineInstanceInput struct {
 
 // PipelineInstanceSpec defines the desired state of PipelineInstance
 type PipelineInstanceSpec struct {
-	Inputs map[string]*PipelineInstanceInput `json:"inputs,omitempty"`
+	PipelineName string                            `json:"pipelineName,omitempty"`
+	Inputs       map[string]*PipelineInstanceInput `json:"inputs,omitempty"`
 }
 
 // PipelineInstanceStatus defines the observed state of PipelineInstance

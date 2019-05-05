@@ -18,18 +18,18 @@ package artifact
 
 import (
 	"context"
-	"reflect"
+	"encoding/json"
+	"fmt"
 
 	corev1alpha1 "github.com/milesbxf/puppeteer/pkg/apis/core/v1alpha1"
-	appsv1 "k8s.io/api/apps/v1"
-	corev1 "k8s.io/api/core/v1"
+	pluginsv1alpha1 "github.com/milesbxf/puppeteer/pkg/apis/plugins/v1alpha1"
 	"k8s.io/apimachinery/pkg/api/errors"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
-	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
@@ -69,16 +69,6 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 		return err
 	}
 
-	// TODO(user): Modify this to be the types you create
-	// Uncomment watch a Deployment created by Artifact - change this for objects you create
-	err = c.Watch(&source.Kind{Type: &appsv1.Deployment{}}, &handler.EnqueueRequestForOwner{
-		IsController: true,
-		OwnerType:    &corev1alpha1.Artifact{},
-	})
-	if err != nil {
-		return err
-	}
-
 	return nil
 }
 
@@ -92,14 +82,14 @@ type ReconcileArtifact struct {
 
 // Reconcile reads that state of the cluster for a Artifact object and makes changes based on the state read
 // and what is in the Artifact.Spec
-// TODO(user): Modify this Reconcile function to implement your Controller logic.  The scaffolding writes
-// a Deployment as an example
 // Automatically generate RBAC rules to allow the Controller to read and write Deployments
 // +kubebuilder:rbac:groups=apps,resources=deployments,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=apps,resources=deployments/status,verbs=get;update;patch
 // +kubebuilder:rbac:groups=core.puppeteer.milesbryant.co.uk,resources=artifacts,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=core.puppeteer.milesbryant.co.uk,resources=artifacts/status,verbs=get;update;patch
 func (r *ReconcileArtifact) Reconcile(request reconcile.Request) (reconcile.Result, error) {
+	logParams := []interface{}{"artifact_name", request.NamespacedName.String()}
+
 	// Fetch the Artifact instance
 	instance := &corev1alpha1.Artifact{}
 	err := r.Get(context.TODO(), request.NamespacedName, instance)
@@ -107,61 +97,85 @@ func (r *ReconcileArtifact) Reconcile(request reconcile.Request) (reconcile.Resu
 		if errors.IsNotFound(err) {
 			// Object not found, return.  Created objects are automatically garbage collected.
 			// For additional cleanup logic use finalizers.
+			log.V(2).Info("Artifact not found, not reconciling further", logParams...)
 			return reconcile.Result{}, nil
 		}
 		// Error reading the object - requeue the request.
+		log.Error(err, "Error reconciling Artifact", logParams...)
 		return reconcile.Result{}, err
 	}
 
-	// TODO(user): Change this to be the object type created by your controller
-	// Define the desired Deployment object
-	deploy := &appsv1.Deployment{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      instance.Name + "-deployment",
-			Namespace: instance.Namespace,
-		},
-		Spec: appsv1.DeploymentSpec{
-			Selector: &metav1.LabelSelector{
-				MatchLabels: map[string]string{"deployment": instance.Name + "-deployment"},
-			},
-			Template: corev1.PodTemplateSpec{
-				ObjectMeta: metav1.ObjectMeta{Labels: map[string]string{"deployment": instance.Name + "-deployment"}},
-				Spec: corev1.PodSpec{
-					Containers: []corev1.Container{
-						{
-							Name:  "nginx",
-							Image: "nginx",
-						},
-					},
-				},
-			},
-		},
-	}
-	if err := controllerutil.SetControllerReference(instance, deploy, r.scheme); err != nil {
-		return reconcile.Result{}, err
+	// Make sure an appropriate phase is set
+
+	var phase corev1alpha1.ArtifactPhase
+	switch {
+	case instance.Spec.Source.Type == "":
+		log.V(1).Info("Artifact has missing source type", logParams...)
+		phase = corev1alpha1.InvalidArtifact
+	case instance.Spec.Source.Type != "" && instance.Spec.Reference == "":
+		phase = corev1alpha1.UnresolvedArtifact
+	case instance.Spec.Source.Type != "" && instance.Spec.Reference != "":
+		phase = corev1alpha1.ResolvedArtifact
+	default:
+		phase = corev1alpha1.InvalidArtifact
 	}
 
-	// TODO(user): Change this for the object type created by your controller
-	// Check if the Deployment already exists
-	found := &appsv1.Deployment{}
-	err = r.Get(context.TODO(), types.NamespacedName{Name: deploy.Name, Namespace: deploy.Namespace}, found)
-	if err != nil && errors.IsNotFound(err) {
-		log.Info("Creating Deployment", "namespace", deploy.Namespace, "name", deploy.Name)
-		err = r.Create(context.TODO(), deploy)
-		return reconcile.Result{}, err
-	} else if err != nil {
-		return reconcile.Result{}, err
-	}
-
-	// TODO(user): Change this for the object type created by your controller
-	// Update the found object and write the result back if there are any changes
-	if !reflect.DeepEqual(deploy.Spec, found.Spec) {
-		found.Spec = deploy.Spec
-		log.Info("Updating Deployment", "namespace", deploy.Namespace, "name", deploy.Name)
-		err = r.Update(context.TODO(), found)
+	if phase != instance.Status.Phase {
+		instance.Status.Phase = phase
+		err = r.Client.Update(context.Background(), instance)
 		if err != nil {
+			log.Error(err, "Error updating Artifact status", logParams...)
 			return reconcile.Result{}, err
 		}
 	}
+
+	switch instance.Status.Phase {
+	case corev1alpha1.UnresolvedArtifact:
+		// Artifact has a source, but is not resolved - we'll trigger resolution based on the type
+		log.V(2).Info("Resolving artifact", logParams...)
+
+		// TODO: make this dynamically look up a plugin
+		switch instance.Spec.Source.Type {
+		case "git":
+
+			// Check if a GitArtifactResolution already exists
+			err := r.Client.Get(context.Background(), types.NamespacedName{Name: instance.Name, Namespace: instance.Namespace}, &pluginsv1alpha1.GitArtifactResolution{})
+			switch {
+			case err == nil:
+				log.V(3).Info("GitArtifactResolution already exists, not creating", logParams...)
+				return reconcile.Result{}, nil
+			case !apierrors.IsNotFound(err):
+				log.Error(err, "Couldn't look up GitResolutionArtifact", logParams...)
+				return reconcile.Result{}, err
+			}
+
+			// Parse config into a spec
+			gitSpec := &pluginsv1alpha1.GitArtifactResolutionSpec{}
+			err = json.Unmarshal([]byte(instance.Spec.Source.Config), gitSpec)
+			if err != nil {
+				log.Error(err, "Couldn't parse Artifact source config", append(logParams, "artifact_source_config", instance.Spec.Source.Type)...)
+				return reconcile.Result{}, err
+			}
+
+			gitResolution := &pluginsv1alpha1.GitArtifactResolution{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      instance.Name,
+					Namespace: instance.Namespace,
+				},
+				Spec: gitSpec,
+			}
+			err = r.Client.Create(context.Background(), gitResolution)
+			if err != nil {
+				log.Error(err, "Couldn't create GitResolutionArtifact", logParams...)
+				return reconcile.Result{}, err
+			}
+
+		default:
+			err := fmt.Errorf("unknown artifact source type %s", instance.Spec.Source.Type)
+			log.Error(err, "Couldn't resolve Artifact", logParams...)
+			return reconcile.Result{}, err
+		}
+	}
+
 	return reconcile.Result{}, nil
 }

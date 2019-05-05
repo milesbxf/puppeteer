@@ -14,7 +14,7 @@ spec:
         trigger: manual
         config: |
           {
-            "repository": "https://github.com/milesbxf/puppeteer",
+            "repository": "https://github.com/milesbxf/puppeteer"
           }
     stages:
     - name: build

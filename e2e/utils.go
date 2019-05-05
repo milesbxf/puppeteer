@@ -52,7 +52,14 @@ func NewTestRig() (*TestRig, error) {
 	id := strings.ToLower(shortuuid.New())
 	testNamespace := "puppeteer-e2e-test-" + id
 
-	ns := corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: testNamespace}}
+	ns := corev1.Namespace{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: testNamespace,
+			Labels: map[string]string{
+				"puppeteer-e2e-test": "true",
+			},
+		},
+	}
 
 	err = c.Create(context.TODO(), &ns)
 	if err != nil {

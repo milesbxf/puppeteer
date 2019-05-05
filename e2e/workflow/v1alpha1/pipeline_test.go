@@ -34,6 +34,7 @@ func TestSimpleBuildPipeline(t *testing.T) {
 
 	instance, ok := objs[0].(*corev1alpha1.PipelineInstance)
 	g.Expect(ok).To(gomega.BeTrue())
+	t.Logf("instance pipeline: %s", instance.Spec.PipelineName)
 
 	instance.ObjectMeta.Namespace = rig.Namespace
 

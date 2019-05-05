@@ -20,8 +20,13 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-// EDIT THIS FILE!  THIS IS SCAFFOLDING FOR YOU TO OWN!
-// NOTE: json tags are required.  Any new fields you add must have json tags for the fields to be serialized.
+type ArtifactPhase string
+
+const (
+	InvalidArtifact    ArtifactPhase = "Invalid"
+	UnresolvedArtifact ArtifactPhase = "Unresolved"
+	ResolvedArtifact   ArtifactPhase = "Resolved"
+)
 
 type StorageResponse struct {
 	Status               string `json:"status"`
@@ -43,8 +48,7 @@ type ArtifactSpec struct {
 
 // ArtifactStatus defines the observed state of Artifact
 type ArtifactStatus struct {
-	// INSERT ADDITIONAL STATUS FIELD - define observed state of cluster
-	// Important: Run "make" to regenerate code after modifying this file
+	Phase ArtifactPhase `json:"phase,omitempty"`
 }
 
 // +genclient

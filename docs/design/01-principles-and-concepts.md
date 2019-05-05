@@ -34,7 +34,20 @@ Everything in Puppeteer should revolve around the concept of an Artifact. An Art
 * A Docker image (pinned to a specific SHA)
 * A binary built on a pipeline
 
-The main property that Artifacts have is that they're uniquely identifiable and immutable. This means a Git repository pinned to a commit SHA (rather than a tag), and Docker images pinned to a SHA.
+#### Lifecycle
+
+An Artifact can (but not always) start off as a request for an Artifact. For instance, if we trigger a pipeline with a particular Git commit, we'll create an Artifact that references that commit as a source, but doesn't reference any storage. This is an "unresolved" Artifact.
+
+The Artifact controller will reconcile unresolved Artifacts, and do what it needs to do to resolve them and fill out the reference - this is detailed in the next section, Sources.
+
+Once an Artifact has a reference and it is "resolved", it is ready for use in build stages and other pipelines.
+
+Later on, we may want to introduce some form of garbage collection where we clean up the underlying storage of old Artifacts, so that may introduce a new phase.
+
+
+#### Properties
+
+The main property that Artifacts have is that they're uniquely identifiable and, if they're "resolved", they're immutable. This means a Git repository pinned to a commit SHA (rather than a tag), and Docker images pinned to a SHA.
 Artifacts will typically (but not always) have some kind of state associated with them. For example, a Git repository will have the filesystem tree of repository contents (and Git metadata), the Docker image will have the image layers.
 It seems sensible to not use Kubernetes to store this state - most typical use cases would exceed the [limits of etcd](https://github.com/etcd-io/etcd/blob/master/Documentation/dev-guide/limit.md) quite quickly.
 

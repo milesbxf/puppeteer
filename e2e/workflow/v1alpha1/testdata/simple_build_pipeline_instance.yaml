@@ -12,5 +12,5 @@ spec:
       type: git
       config: |
         {
-          "ref": "fe5f6368bb00aa955f5704b04782c730edd6c883",
+          "commit": "fe5f6368bb00aa955f5704b04782c730edd6c883"
         }
