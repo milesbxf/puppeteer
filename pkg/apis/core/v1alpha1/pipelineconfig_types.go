@@ -42,14 +42,14 @@ type PipelineTask struct {
 	Outputs map[string]TaskOutput `json:"outputs,omitempty"`
 }
 
-type PipelineStage struct {
+type StageConfig struct {
 	Name  string                  `json:"name,omitempty"`
 	Tasks map[string]PipelineTask `json:"tasks,omitempty"`
 }
 
 type Workflow struct {
 	Inputs map[string]PipelineInputConfig `json:"inputs,omitempty"`
-	Stages []PipelineStage                `json:"stages,omitempty"`
+	Stages []StageConfig                  `json:"stages,omitempty"`
 }
 
 // PipelineConfigSpec defines the desired state of PipelineConfig

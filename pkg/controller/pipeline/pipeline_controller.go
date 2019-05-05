@@ -157,7 +157,7 @@ func (r *ReconcilePipeline) Reconcile(request reconcile.Request) (reconcile.Resu
 		if artifact.Status.Phase == corev1alpha1.ResolvedArtifact {
 			// Make sure a pipeline stage instance exists for each stage in sequence
 			for _, stage := range pipelineConfig.Spec.Workflow.Stages {
-				progressNextStage, err := r.reconcilePipelineStageInstance(instance, &stage)
+				progressNextStage, err := r.reconcileStage(instance, &stage)
 				if err != nil {
 					log.Error(err, "reconciling stage instance", append(innerLogParams, "artifact_name", input.Artifact.Name, "stage_name", stage.Name)...)
 					return reconcile.Result{}, err

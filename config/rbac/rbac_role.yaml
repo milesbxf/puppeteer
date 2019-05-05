@@ -267,7 +267,7 @@ rules:
 - apiGroups:
   - core.puppeteer.milesbryant.co.uk
   resources:
-  - pipelinestageinstances
+  - stages
   verbs:
   - get
   - list
@@ -279,7 +279,7 @@ rules:
 - apiGroups:
   - core.puppeteer.milesbryant.co.uk
   resources:
-  - pipelinestageinstances/status
+  - stages/status
   verbs:
   - get
   - update

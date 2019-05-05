@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package pipelinestageinstance
+package stage
 
 import (
 	"context"
@@ -38,7 +38,7 @@ var log = logf.Log.WithName("controller")
 * business logic.  Delete these comments after modifying this file.*
  */
 
-// Add creates a new PipelineStageInstance Controller and adds it to the Manager with default RBAC. The Manager will set fields on the Controller
+// Add creates a new Stage Controller and adds it to the Manager with default RBAC. The Manager will set fields on the Controller
 // and Start it when the Manager is Started.
 func Add(mgr manager.Manager) error {
 	return add(mgr, newReconciler(mgr))
@@ -46,19 +46,19 @@ func Add(mgr manager.Manager) error {
 
 // newReconciler returns a new reconcile.Reconciler
 func newReconciler(mgr manager.Manager) reconcile.Reconciler {
-	return &ReconcilePipelineStageInstance{Client: mgr.GetClient(), scheme: mgr.GetScheme()}
+	return &ReconcileStage{Client: mgr.GetClient(), scheme: mgr.GetScheme()}
 }
 
 // add adds a new Controller to mgr with r as the reconcile.Reconciler
 func add(mgr manager.Manager, r reconcile.Reconciler) error {
 	// Create a new controller
-	c, err := controller.New("pipelinestageinstance-controller", mgr, controller.Options{Reconciler: r})
+	c, err := controller.New("stage-controller", mgr, controller.Options{Reconciler: r})
 	if err != nil {
 		return err
 	}
 
-	// Watch for changes to PipelineStageInstance
-	err = c.Watch(&source.Kind{Type: &corev1alpha1.PipelineStageInstance{}}, &handler.EnqueueRequestForObject{})
+	// Watch for changes to Stage
+	err = c.Watch(&source.Kind{Type: &corev1alpha1.Stage{}}, &handler.EnqueueRequestForObject{})
 	if err != nil {
 		return err
 	}
@@ -66,27 +66,27 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 	return nil
 }
 
-var _ reconcile.Reconciler = &ReconcilePipelineStageInstance{}
+var _ reconcile.Reconciler = &ReconcileStage{}
 
-// ReconcilePipelineStageInstance reconciles a PipelineStageInstance object
-type ReconcilePipelineStageInstance struct {
+// ReconcileStage reconciles a Stage object
+type ReconcileStage struct {
 	client.Client
 	scheme *runtime.Scheme
 }
 
-// Reconcile reads that state of the cluster for a PipelineStageInstance object and makes changes based on the state read
-// and what is in the PipelineStageInstance.Spec
+// Reconcile reads that state of the cluster for a Stage object and makes changes based on the state read
+// and what is in the Stage.Spec
 // TODO(user): Modify this Reconcile function to implement your Controller logic.  The scaffolding writes
 // a Deployment as an example
 // Automatically generate RBAC rules to allow the Controller to read and write Deployments
 // +kubebuilder:rbac:groups=apps,resources=deployments,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=apps,resources=deployments/status,verbs=get;update;patch
-// +kubebuilder:rbac:groups=core.puppeteer.milesbryant.co.uk,resources=pipelinestageinstances,verbs=get;list;watch;create;update;patch;delete
-// +kubebuilder:rbac:groups=core.puppeteer.milesbryant.co.uk,resources=pipelinestageinstances/status,verbs=get;update;patch
-func (r *ReconcilePipelineStageInstance) Reconcile(request reconcile.Request) (reconcile.Result, error) {
-	logParams := []interface{}{"pipeline_stage_instance_name", request.NamespacedName.String()}
-	// Fetch the PipelineStageInstance instance
-	instance := &corev1alpha1.PipelineStageInstance{}
+// +kubebuilder:rbac:groups=core.puppeteer.milesbryant.co.uk,resources=stages,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups=core.puppeteer.milesbryant.co.uk,resources=stages/status,verbs=get;update;patch
+func (r *ReconcileStage) Reconcile(request reconcile.Request) (reconcile.Result, error) {
+	logParams := []interface{}{"name", request.NamespacedName.String()}
+	// Fetch the Stage instance
+	instance := &corev1alpha1.Stage{}
 	err := r.Get(context.TODO(), request.NamespacedName, instance)
 	if err != nil {
 		if errors.IsNotFound(err) {
@@ -98,12 +98,12 @@ func (r *ReconcilePipelineStageInstance) Reconcile(request reconcile.Request) (r
 		return reconcile.Result{}, err
 	}
 
-	phase := corev1alpha1.PipelineStageInstanceInProgress
+	phase := corev1alpha1.StageInProgress
 	if phase != instance.Status.Phase {
 		instance.Status.Phase = phase
 		err = r.Client.Update(context.Background(), instance)
 		if err != nil {
-			log.Error(err, "Error updating pipelinestageinstance status", logParams...)
+			log.Error(err, "Error updating stage status", logParams...)
 			return reconcile.Result{}, err
 		}
 	}

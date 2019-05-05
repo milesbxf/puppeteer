@@ -83,8 +83,8 @@ func TestSimpleBuildPipeline(t *testing.T) {
 	t.Logf("Got artifact for pipeline instance input: '%s'", artifact.Name)
 
 	g.Eventually(
-		func() (corev1alpha1.PipelineStageInstancePhase, error) {
-			stageInstance := &corev1alpha1.PipelineStageInstance{}
+		func() (corev1alpha1.StagePhase, error) {
+			stageInstance := &corev1alpha1.Stage{}
 			err = rig.K8s.Get(context.Background(), types.NamespacedName{Name: pipeline.Name + "-build-1", Namespace: rig.Namespace}, stageInstance)
 			if err != nil {
 				return "", err
@@ -92,8 +92,8 @@ func TestSimpleBuildPipeline(t *testing.T) {
 			return stageInstance.Status.Phase, nil
 		},
 		"2m",
-	).Should(gomega.Equal(corev1alpha1.PipelineStageInstanceInProgress), "waiting for pipeline stage in progress")
-	// First stage is triggered (PipelineStageInstance)
+	).Should(gomega.Equal(corev1alpha1.StageInProgress), "waiting for pipeline stage in progress")
+	// First stage is triggered (Stage)
 	// Spins up job with configured image and shell script
 	// Build sidecar pulls local storage down into a shared volume
 	// Waits for attached job to finish
