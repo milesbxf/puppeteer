@@ -23,22 +23,22 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-type GitPipelineInputConfig struct {
+type RepoConfig struct {
 	Repository string `json:"repository,omitempty"`
 }
 
-func GitPipelineInputConfigFromJSON(jsonStr string) (*GitPipelineInputConfig, error) {
-	g := &GitPipelineInputConfig{}
+func RepoConfigFromJSON(jsonStr string) (*RepoConfig, error) {
+	g := &RepoConfig{}
 	err := json.Unmarshal([]byte(jsonStr), g)
 	return g, err
 }
 
-type GitPipelineInstanceInputConfig struct {
+type GitPipelineInputConfig struct {
 	Commit string `json:"commit,omitempty"`
 }
 
-func GitPipelineInstanceInputConfigFromJSON(jsonStr string) (*GitPipelineInstanceInputConfig, error) {
-	g := &GitPipelineInstanceInputConfig{}
+func GitPipelineInputConfigFromJSON(jsonStr string) (*GitPipelineInputConfig, error) {
+	g := &GitPipelineInputConfig{}
 	err := json.Unmarshal([]byte(jsonStr), g)
 	return g, err
 }

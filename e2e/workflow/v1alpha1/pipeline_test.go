@@ -19,51 +19,51 @@ func TestSimpleBuildPipeline(t *testing.T) {
 	g.Expect(err).NotTo(gomega.HaveOccurred(), "setting up test rig")
 	t.Logf("Test rig set up with namespace %s", rig.Namespace)
 
-	// Load and create a simple Pipeline
+	// Load and create a simple Pipeline Config
 
-	objs, err := e2e.LoadResourcesFromTestData("simple_build_pipeline.yaml")
+	objs, err := e2e.LoadResourcesFromTestData("simple_build_pipeline_config.yaml")
+	g.Expect(err).NotTo(gomega.HaveOccurred(), "loading pipeline config yaml")
+
+	pipelineConfig, ok := objs[0].(*corev1alpha1.PipelineConfig)
+	pipelineConfig.ObjectMeta.Namespace = rig.Namespace
+	g.Expect(ok).To(gomega.BeTrue(), "loading pipeline config obj")
+	err = rig.K8s.Create(context.TODO(), pipelineConfig)
+	g.Expect(err).NotTo(gomega.HaveOccurred(), "creating pipeline config obj")
+	t.Logf("Created pipeline object %s", pipelineConfig.Name)
+
+	// Manually trigger a Pipeline
+
+	objs, err = e2e.LoadResourcesFromTestData("simple_build_pipeline.yaml")
 	g.Expect(err).NotTo(gomega.HaveOccurred(), "loading pipeline yaml")
 
-	pipeline, ok := objs[0].(*corev1alpha1.PipelineConfig)
-	pipeline.ObjectMeta.Namespace = rig.Namespace
+	pipeline, ok := objs[0].(*corev1alpha1.Pipeline)
 	g.Expect(ok).To(gomega.BeTrue(), "loading pipeline obj")
+
+	pipeline.ObjectMeta.Namespace = rig.Namespace
+
 	err = rig.K8s.Create(context.TODO(), pipeline)
 	g.Expect(err).NotTo(gomega.HaveOccurred(), "creating pipeline obj")
-	t.Logf("Created pipeline object %s", pipeline.Name)
-
-	// Manually trigger the Pipeline by creating a PipelineInstance
-
-	objs, err = e2e.LoadResourcesFromTestData("simple_build_pipeline_instance.yaml")
-	g.Expect(err).NotTo(gomega.HaveOccurred(), "loading pipeline instance yaml")
-
-	instance, ok := objs[0].(*corev1alpha1.PipelineInstance)
-	g.Expect(ok).To(gomega.BeTrue(), "loading pipeline instance obj")
-
-	instance.ObjectMeta.Namespace = rig.Namespace
-
-	err = rig.K8s.Create(context.TODO(), instance)
-	g.Expect(err).NotTo(gomega.HaveOccurred(), "creating pipeline instance obj")
 
 	g.Eventually(func() error {
-		i := &corev1alpha1.PipelineInstance{}
-		return rig.K8s.Get(context.Background(), types.NamespacedName{Name: instance.Name, Namespace: rig.Namespace}, i)
-	}, "5s").Should(gomega.Succeed(), "creating pipeline instance obj")
-	t.Logf("Created pipeline instance object %s", pipeline.Name)
+		p := &corev1alpha1.Pipeline{}
+		return rig.K8s.Get(context.Background(), types.NamespacedName{Name: pipeline.Name, Namespace: rig.Namespace}, p)
+	}, "5s").Should(gomega.Succeed(), "creating pipeline obj")
+	t.Logf("Created pipeline object %s", pipeline.Name)
 
 	// Now the pipeline instance controller reconciles. It wants to associate the instance
 	// with an Artifact matching the config provided. If there isn't already one matching the Source,
 	// it creates one, without filling in the reference.
 
 	g.Eventually(
-		func() (*corev1alpha1.PipelineInstanceArtifact, error) {
-			return getArtifactFromPipelineInstance(rig.K8s, instance.Name, rig.Namespace)
+		func() (*corev1alpha1.PipelineArtifact, error) {
+			return getArtifactFromPipeline(rig.K8s, pipeline.Name, rig.Namespace)
 		},
 		"30s",
-	).ShouldNot(gomega.BeNil(), "waiting for pipeline instance artifact")
+	).ShouldNot(gomega.BeNil(), "waiting for pipeline artifact")
 
-	a, err := getArtifactFromPipelineInstance(rig.K8s, instance.Name, rig.Namespace)
-	g.Expect(err).NotTo(gomega.HaveOccurred(), "getting artifact from pipeline instance artifact")
-	t.Logf("Got name of artifact for pipeline instance input: '%s'", a.Name)
+	a, err := getArtifactFromPipeline(rig.K8s, pipeline.Name, rig.Namespace)
+	g.Expect(err).NotTo(gomega.HaveOccurred(), "getting artifact from pipeline")
+	t.Logf("Got name of artifact for pipeline input: '%s'", a.Name)
 
 	g.Eventually(
 		func() (*corev1alpha1.StorageReference, error) {
@@ -85,7 +85,7 @@ func TestSimpleBuildPipeline(t *testing.T) {
 	g.Eventually(
 		func() (corev1alpha1.PipelineStageInstancePhase, error) {
 			stageInstance := &corev1alpha1.PipelineStageInstance{}
-			err = rig.K8s.Get(context.Background(), types.NamespacedName{Name: instance.Name + "-build-1", Namespace: rig.Namespace}, stageInstance)
+			err = rig.K8s.Get(context.Background(), types.NamespacedName{Name: pipeline.Name + "-build-1", Namespace: rig.Namespace}, stageInstance)
 			if err != nil {
 				return "", err
 			}
@@ -103,11 +103,11 @@ func TestSimpleBuildPipeline(t *testing.T) {
 
 }
 
-func getArtifactFromPipelineInstance(c client.Client, name, namespace string) (*corev1alpha1.PipelineInstanceArtifact, error) {
-	i := &corev1alpha1.PipelineInstance{}
-	err := c.Get(context.Background(), types.NamespacedName{Name: name, Namespace: namespace}, i)
+func getArtifactFromPipeline(c client.Client, name, namespace string) (*corev1alpha1.PipelineArtifact, error) {
+	p := &corev1alpha1.Pipeline{}
+	err := c.Get(context.Background(), types.NamespacedName{Name: name, Namespace: namespace}, p)
 	if err != nil {
 		return nil, err
 	}
-	return i.Spec.Inputs["scm-upstream"].Artifact, err
+	return p.Spec.Inputs["scm-upstream"].Artifact, err
 }

@@ -4,12 +4,12 @@ metadata:
   creationTimestamp: null
   labels:
     controller-tools.k8s.io: "1.0"
-  name: pipelineinstances.core.puppeteer.milesbryant.co.uk
+  name: pipelines.core.puppeteer.milesbryant.co.uk
 spec:
   group: core.puppeteer.milesbryant.co.uk
   names:
-    kind: PipelineInstance
-    plural: pipelineinstances
+    kind: Pipeline
+    plural: pipelines
   scope: Namespaced
   validation:
     openAPIV3Schema:

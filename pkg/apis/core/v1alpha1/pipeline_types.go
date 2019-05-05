@@ -20,48 +20,50 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-type PipelineInstanceArtifact struct {
+type PipelineArtifact struct {
 	Name string `json:"name,omitempty"`
 }
 
-type PipelineInstanceInput struct {
-	Type     string                    `json:"type,omitempty"`
-	Config   string                    `json:"config,omitempty"`
-	Artifact *PipelineInstanceArtifact `json:"artifact,omitempty"`
+type PipelineInput struct {
+	Type     string            `json:"type,omitempty"`
+	Config   string            `json:"config,omitempty"`
+	Artifact *PipelineArtifact `json:"artifact,omitempty"`
 }
 
-// PipelineInstanceSpec defines the desired state of PipelineInstance
-type PipelineInstanceSpec struct {
-	PipelineName string                            `json:"pipelineName,omitempty"`
-	Inputs       map[string]*PipelineInstanceInput `json:"inputs,omitempty"`
+// PipelineSpec defines the desired state of Pipeline
+type PipelineSpec struct {
+	PipelineName string                    `json:"pipelineName,omitempty"`
+	Inputs       map[string]*PipelineInput `json:"inputs,omitempty"`
 }
 
-// PipelineInstanceStatus defines the observed state of PipelineInstance
-type PipelineInstanceStatus struct {
+// PipelineStatus defines the observed state of Pipeline
+type PipelineStatus struct {
+	// INSERT ADDITIONAL STATUS FIELD - define observed state of cluster
+	// Important: Run "make" to regenerate code after modifying this file
 }
 
 // +genclient
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
-// PipelineInstance is the Schema for the pipelineinstances API
+// Pipeline is the Schema for the pipelines API
 // +k8s:openapi-gen=true
-type PipelineInstance struct {
+type Pipeline struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
-	Spec   PipelineInstanceSpec   `json:"spec,omitempty"`
-	Status PipelineInstanceStatus `json:"status,omitempty"`
+	Spec   PipelineSpec   `json:"spec,omitempty"`
+	Status PipelineStatus `json:"status,omitempty"`
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
-// PipelineInstanceList contains a list of PipelineInstance
-type PipelineInstanceList struct {
+// PipelineList contains a list of Pipeline
+type PipelineList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`
-	Items           []PipelineInstance `json:"items"`
+	Items           []Pipeline `json:"items"`
 }
 
 func init() {
-	SchemeBuilder.Register(&PipelineInstance{}, &PipelineInstanceList{})
+	SchemeBuilder.Register(&Pipeline{}, &PipelineList{})
 }

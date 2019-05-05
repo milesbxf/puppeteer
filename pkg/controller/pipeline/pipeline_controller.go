@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package pipelineinstance
+package pipeline
 
 import (
 	"context"
@@ -38,14 +38,14 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/source"
 )
 
-var log = logf.Log.WithName("pipelineinstance_controller")
+var log = logf.Log.WithName("pipeline-controller")
 
 /**
 * USER ACTION REQUIRED: This is a scaffold file intended for the user to modify with their own Controller
 * business logic.  Delete these comments after modifying this file.*
  */
 
-// Add creates a new PipelineInstance Controller and adds it to the Manager with default RBAC. The Manager will set fields on the Controller
+// Add creates a new Pipeline Controller and adds it to the Manager with default RBAC. The Manager will set fields on the Controller
 // and Start it when the Manager is Started.
 func Add(mgr manager.Manager) error {
 	return add(mgr, newReconciler(mgr))
@@ -53,19 +53,19 @@ func Add(mgr manager.Manager) error {
 
 // newReconciler returns a new reconcile.Reconciler
 func newReconciler(mgr manager.Manager) reconcile.Reconciler {
-	return &ReconcilePipelineInstance{Client: mgr.GetClient(), scheme: mgr.GetScheme()}
+	return &ReconcilePipeline{Client: mgr.GetClient(), scheme: mgr.GetScheme()}
 }
 
 // add adds a new Controller to mgr with r as the reconcile.Reconciler
 func add(mgr manager.Manager, r reconcile.Reconciler) error {
 	// Create a new controller
-	c, err := controller.New("pipelineinstance-controller", mgr, controller.Options{Reconciler: r})
+	c, err := controller.New("pipeline-controller", mgr, controller.Options{Reconciler: r})
 	if err != nil {
 		return err
 	}
 
-	// Watch for changes to PipelineInstance
-	err = c.Watch(&source.Kind{Type: &corev1alpha1.PipelineInstance{}}, &handler.EnqueueRequestForObject{})
+	// Watch for changes to Pipeline
+	err = c.Watch(&source.Kind{Type: &corev1alpha1.Pipeline{}}, &handler.EnqueueRequestForObject{})
 	if err != nil {
 		return err
 	}
@@ -73,7 +73,7 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 	// Watch for artifacts this pipeline owns
 	err = c.Watch(&source.Kind{Type: &corev1alpha1.Artifact{}}, &handler.EnqueueRequestForOwner{
 		IsController: true,
-		OwnerType:    &corev1alpha1.PipelineInstance{},
+		OwnerType:    &corev1alpha1.Pipeline{},
 	})
 	if err != nil {
 		return err
@@ -81,39 +81,40 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 	return nil
 }
 
-var _ reconcile.Reconciler = &ReconcilePipelineInstance{}
+var _ reconcile.Reconciler = &ReconcilePipeline{}
 
-// ReconcilePipelineInstance reconciles a PipelineInstance object
-type ReconcilePipelineInstance struct {
+// ReconcilePipeline reconciles a Pipeline object
+type ReconcilePipeline struct {
 	client.Client
 	scheme *runtime.Scheme
 }
 
-// Reconcile reads that state of the cluster for a PipelineInstance object and makes changes based on the state read
-// and what is in the PipelineInstance.Spec
+// Reconcile reads that state of the cluster for a Pipeline object and makes changes based on the state read
+// and what is in the Pipeline.Spec
+// TODO(user): Modify this Reconcile function to implement your Controller logic.  The scaffolding writes
+// a Deployment as an example
 // Automatically generate RBAC rules to allow the Controller to read and write Deployments
 // +kubebuilder:rbac:groups=apps,resources=deployments,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=apps,resources=deployments/status,verbs=get;update;patch
-// +kubebuilder:rbac:groups=core.puppeteer.milesbryant.co.uk,resources=pipelineinstances,verbs=get;list;watch;create;update;patch;delete
-// +kubebuilder:rbac:groups=core.puppeteer.milesbryant.co.uk,resources=pipelineinstances/status,verbs=get;update;patch
-func (r *ReconcilePipelineInstance) Reconcile(request reconcile.Request) (reconcile.Result, error) {
-
+// +kubebuilder:rbac:groups=core.puppeteer.milesbryant.co.uk,resources=pipelines,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups=core.puppeteer.milesbryant.co.uk,resources=pipelines/status,verbs=get;update;patch
+func (r *ReconcilePipeline) Reconcile(request reconcile.Request) (reconcile.Result, error) {
 	logParams := []interface{}{"pipeline_instance_name", request.NamespacedName.String()}
 
-	log.V(2).Info("Reconciling PipelineInstance object", logParams...)
+	log.V(2).Info("Reconciling Pipeline object", logParams...)
 
-	// Fetch the PipelineInstance instance
-	instance := &corev1alpha1.PipelineInstance{}
+	// Fetch the Pipeline instance
+	instance := &corev1alpha1.Pipeline{}
 	err := r.Get(context.TODO(), request.NamespacedName, instance)
 	if err != nil {
 		if errors.IsNotFound(err) {
 			// Object not found, return.  Created objects are automatically garbage collected.
 			// For additional cleanup logic use finalizers.
-			log.V(2).Info("PipelineInstance not found, not reconciling further", logParams...)
+			log.V(2).Info("Pipeline not found, not reconciling further", logParams...)
 			return reconcile.Result{}, nil
 		}
 		// Error reading the object - requeue the request.
-		log.Error(err, "Error reconciling PipelineInstance ", logParams...)
+		log.Error(err, "Error reconciling Pipeline ", logParams...)
 		return reconcile.Result{}, err
 	}
 
@@ -123,10 +124,10 @@ func (r *ReconcilePipelineInstance) Reconcile(request reconcile.Request) (reconc
 	if err != nil {
 		if errors.IsNotFound(err) {
 			err = fmt.Errorf("pipeline config %s referenced in pipelineinstance %s doesn't exist", instance.Spec.PipelineName, instance.Name)
-			log.Error(err, "Error reconciling PipelineInstance ", logParams...)
+			log.Error(err, "Error reconciling Pipeline ", logParams...)
 			return reconcile.Result{}, err
 		}
-		log.Error(err, "Error reconciling PipelineInstance ", logParams...)
+		log.Error(err, "Error reconciling Pipeline ", logParams...)
 		return reconcile.Result{}, err
 	}
 
@@ -134,15 +135,15 @@ func (r *ReconcilePipelineInstance) Reconcile(request reconcile.Request) (reconc
 		innerLogParams := append(logParams, "pipeline_instance_input", key)
 
 		// Look up corresponding pipeline input
-		pipelineInput, ok := pipelineConfig.Spec.Inputs[key]
+		pipelineInputConfig, ok := pipelineConfig.Spec.Inputs[key]
 		if !ok {
 			err = fmt.Errorf("input %s referenced in pipelineinstance %s doesn't exist in pipeline %s", key, instance.Name, instance.Spec.PipelineName)
-			log.Error(err, "Error reconciling PipelineInstance ", innerLogParams...)
+			log.Error(err, "Error reconciling Pipeline ", innerLogParams...)
 			return reconcile.Result{}, err
 		}
 
 		if input.Artifact == nil {
-			err := r.createArtifactForPipelineInstanceInput(instance, key, input, &pipelineInput, innerLogParams)
+			err := r.createArtifactForPipelineInput(instance, key, input, &pipelineInputConfig, innerLogParams)
 			return reconcile.Result{}, err
 		}
 
@@ -171,35 +172,35 @@ func (r *ReconcilePipelineInstance) Reconcile(request reconcile.Request) (reconc
 	return reconcile.Result{}, nil
 }
 
-func (r *ReconcilePipelineInstance) createArtifactForPipelineInstanceInput(instance *corev1alpha1.PipelineInstance, inputName string, pipelineInstanceInput *corev1alpha1.PipelineInstanceInput, pipelineInput *corev1alpha1.PipelineInput, logParams []interface{}) error {
+func (r *ReconcilePipeline) createArtifactForPipelineInput(instance *corev1alpha1.Pipeline, inputName string, pipelineInput *corev1alpha1.PipelineInput, pipelineInputConfig *corev1alpha1.PipelineInputConfig, logParams []interface{}) error {
 	// No artifact attached, we need to find or create one
 
-	switch pipelineInstanceInput.Type {
+	switch pipelineInput.Type {
 	case "git":
-		pipelineInputConfig, err := pluginsv1alpha1.GitPipelineInputConfigFromJSON(pipelineInput.Config)
+		repoConfig, err := pluginsv1alpha1.RepoConfigFromJSON(pipelineInputConfig.Config)
 		if err != nil {
-			log.Error(err, "Error parsing pipeline input config", append(logParams, "pipeline_input_config", pipelineInput.Config)...)
+			log.Error(err, "Error parsing pipeline input config", append(logParams, "pipeline_input_config", pipelineInputConfig.Config)...)
 			return err
 		}
 
-		pipelineInstanceInputConfig, err := pluginsv1alpha1.GitPipelineInstanceInputConfigFromJSON(pipelineInstanceInput.Config)
+		triggerConfig, err := pluginsv1alpha1.GitPipelineInputConfigFromJSON(pipelineInput.Config)
 		if err != nil {
-			log.Error(err, "Error parsing pipeline instance input config", append(logParams, "pipeline_instance_input_config", pipelineInstanceInput.Config)...)
+			log.Error(err, "Error parsing pipeline instance input config", append(logParams, "pipeline_instance_input_config", pipelineInput.Config)...)
 			return err
 		}
 
 		gitSpec := &pluginsv1alpha1.GitArtifactResolutionSpec{
-			RepositoryURL: pipelineInputConfig.Repository,
-			CommitSHA:     pipelineInstanceInputConfig.Commit,
+			RepositoryURL: repoConfig.Repository,
+			CommitSHA:     triggerConfig.Commit,
 		}
 
 		artifactConfig := gitSpec.ToJSON()
 
 		configHash := fmt.Sprintf("%x", sha256.Sum224([]byte(artifactConfig)))
-		artifactName := fmt.Sprintf("%s-%s", pipelineInstanceInput.Type, configHash)
+		artifactName := fmt.Sprintf("%s-%s", pipelineInput.Type, configHash)
 		logParams := append(logParams, "pipeline_instance_input", inputName, "artifact_name", artifactName)
 
-		log.V(2).Info("No artifact attached to PipelineInstance, looking for existing one", logParams...)
+		log.V(2).Info("No artifact attached to Pipeline, looking for existing one", logParams...)
 
 		artifact := &corev1alpha1.Artifact{}
 		err = r.Client.Get(context.Background(), types.NamespacedName{
@@ -208,15 +209,15 @@ func (r *ReconcilePipelineInstance) createArtifactForPipelineInstanceInput(insta
 		}, artifact)
 
 		if err != nil && !apierrors.IsNotFound(err) {
-			log.Error(err, "Error looking up Artifact for PipelineInstance", logParams...)
+			log.Error(err, "Error looking up Artifact for Pipeline", logParams...)
 			return err
 		}
 
 		if apierrors.IsNotFound(err) {
-			log.V(2).Info("Didn't find Artifact for PipelineInstance, creating it", logParams...)
+			log.V(2).Info("Didn't find Artifact for Pipeline, creating it", logParams...)
 
 			source := corev1alpha1.ArtifactSource{
-				Type:   pipelineInstanceInput.Type,
+				Type:   pipelineInput.Type,
 				Config: artifactConfig,
 			}
 
@@ -225,7 +226,7 @@ func (r *ReconcilePipelineInstance) createArtifactForPipelineInstanceInput(insta
 					Name:      artifactName,
 					Namespace: instance.Namespace,
 					Labels: map[string]string{
-						"v1alpha1.core.puppeteer.milesbryant.co.uk/source-type":        pipelineInstanceInput.Type,
+						"v1alpha1.core.puppeteer.milesbryant.co.uk/source-type":        pipelineInput.Type,
 						"v1alpha1.core.puppeteer.milesbryant.co.uk/source-config-hash": configHash,
 					}},
 				Spec: corev1alpha1.ArtifactSpec{
@@ -237,23 +238,23 @@ func (r *ReconcilePipelineInstance) createArtifactForPipelineInstanceInput(insta
 			}
 			err := r.Client.Create(context.Background(), artifact)
 			if err != nil {
-				log.Error(err, "Error creating Artifact for PipelineInstance", logParams...)
+				log.Error(err, "Error creating Artifact for Pipeline", logParams...)
 				return err
 			}
 
 		}
-		instance.Spec.Inputs[inputName].Artifact = &corev1alpha1.PipelineInstanceArtifact{
+		instance.Spec.Inputs[inputName].Artifact = &corev1alpha1.PipelineArtifact{
 			Name: artifact.Name,
 		}
 
-		log.V(2).Info("Updating PipelineInstance Input reference to Artifact", logParams...)
+		log.V(2).Info("Updating Pipeline Input reference to Artifact", logParams...)
 		err = r.Client.Update(context.Background(), instance)
 		if err != nil {
-			log.Error(err, "Error updating PipelineInstance with Artifact reference", logParams...)
+			log.Error(err, "Error updating Pipeline with Artifact reference", logParams...)
 			return err
 		}
 	default:
-		err := fmt.Errorf("unknown pipeline input type %s", pipelineInstanceInput.Type)
+		err := fmt.Errorf("unknown pipeline input type %s", pipelineInput.Type)
 		log.Error(err, "Couldn't create Artifact for pipelineinstance", logParams...)
 		return err
 	}

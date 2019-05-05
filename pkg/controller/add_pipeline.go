@@ -17,10 +17,10 @@ limitations under the License.
 package controller
 
 import (
-	"github.com/milesbxf/puppeteer/pkg/controller/pipelineinstance"
+	"github.com/milesbxf/puppeteer/pkg/controller/pipeline"
 )
 
 func init() {
 	// AddToManagerFuncs is a list of functions to create controllers and add them to a manager.
-	AddToManagerFuncs = append(AddToManagerFuncs, pipelineinstance.Add)
+	AddToManagerFuncs = append(AddToManagerFuncs, pipeline.Add)
 }

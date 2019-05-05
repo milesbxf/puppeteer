@@ -20,7 +20,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-type PipelineInput struct {
+type PipelineInputConfig struct {
 	Type   string `json:"type,omitempty"`
 	Config string `json:"config,omitempty"`
 }
@@ -48,8 +48,8 @@ type PipelineStage struct {
 }
 
 type Workflow struct {
-	Inputs map[string]PipelineInput `json:"inputs,omitempty"`
-	Stages []PipelineStage          `json:"stages,omitempty"`
+	Inputs map[string]PipelineInputConfig `json:"inputs,omitempty"`
+	Stages []PipelineStage                `json:"stages,omitempty"`
 }
 
 // PipelineConfigSpec defines the desired state of PipelineConfig

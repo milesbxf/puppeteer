@@ -1,43 +1,16 @@
 ---
 apiVersion: core.puppeteer.milesbryant.co.uk/v1alpha1
-kind: PipelineConfig
+kind: Pipeline
 metadata:
   labels:
     controller-tools.k8s.io: "1.0"
-  name: simple-build-pipeline
+  name: simple-build-pipeline-1
 spec:
-  workflow:
-    inputs:
-      scm-upstream:
-        type: git
-        # This could also be "on-commit"
-        trigger: manual
-        config: |
-          {
-            "repository": "https://github.com/milesbxf/puppeteer"
-          }
-    stages:
-    - name: build
-      tasks:
-        build-image:
-          image: golang:1.12-stretch
-          inputs:
-            scm-upstream:
-              config: |
-                {
-                  "path": "/go/src/github.com/milesbxf/puppeteer"
-                }
-
-          shell: |
-            #!/bin/bash
-            set -euxo pipefail
-            make docker-build
-          outputs:
-            image:
-              type: docker
-              config: |
-                {
-                  "repository": "milesbxf/puppeteer",
-                  "tag_regex": ".*"
-                }
-
+  pipelineName: simple-build-pipeline
+  inputs:
+    scm-upstream:
+      type: git
+      config: |
+        {
+          "commit": "fe5f6368bb00aa955f5704b04782c730edd6c883"
+        }

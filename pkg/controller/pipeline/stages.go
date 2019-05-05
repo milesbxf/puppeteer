@@ -1,4 +1,4 @@
-package pipelineinstance
+package pipeline
 
 import (
 	"context"
@@ -14,15 +14,15 @@ import (
 
 var stageLog = logf.Log.WithName("pipelineinstance_controller_stages")
 
-func (r *ReconcilePipelineInstance) reconcilePipelineStageInstance(pipelineInstance *corev1alpha1.PipelineInstance, stage *corev1alpha1.PipelineStage) (shouldProgressToNext bool, err error) {
+func (r *ReconcilePipeline) reconcilePipelineStageInstance(pipeline *corev1alpha1.Pipeline, stage *corev1alpha1.PipelineStage) (shouldProgressToNext bool, err error) {
 	ordinal := 1
 	stageInstance := &corev1alpha1.PipelineStageInstance{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      fmt.Sprintf("%s-%s-%d", pipelineInstance.Name, stage.Name, ordinal),
-			Namespace: pipelineInstance.Namespace,
+			Name:      fmt.Sprintf("%s-%s-%d", pipeline.Name, stage.Name, ordinal),
+			Namespace: pipeline.Namespace,
 		},
 	}
-	if err := controllerutil.SetControllerReference(pipelineInstance, stageInstance, r.scheme); err != nil {
+	if err := controllerutil.SetControllerReference(pipeline, stageInstance, r.scheme); err != nil {
 		return false, err
 	}
 

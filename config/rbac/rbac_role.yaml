@@ -187,7 +187,7 @@ rules:
 - apiGroups:
   - core.puppeteer.milesbryant.co.uk
   resources:
-  - pipelineconfigs
+  - pipelines
   verbs:
   - get
   - list
@@ -199,7 +199,7 @@ rules:
 - apiGroups:
   - core.puppeteer.milesbryant.co.uk
   resources:
-  - pipelineconfigs/status
+  - pipelines/status
   verbs:
   - get
   - update
@@ -227,7 +227,7 @@ rules:
 - apiGroups:
   - core.puppeteer.milesbryant.co.uk
   resources:
-  - pipelineinstances
+  - pipelineconfigs
   verbs:
   - get
   - list
@@ -239,7 +239,7 @@ rules:
 - apiGroups:
   - core.puppeteer.milesbryant.co.uk
   resources:
-  - pipelineinstances/status
+  - pipelineconfigs/status
   verbs:
   - get
   - update
