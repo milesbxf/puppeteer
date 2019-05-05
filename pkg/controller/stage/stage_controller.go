@@ -62,6 +62,14 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 		return err
 	}
 
+	// Watch for Task changes (e.g. status)
+	err = c.Watch(&source.Kind{Type: &corev1alpha1.Task{}}, &handler.EnqueueRequestForOwner{
+		IsController: true,
+		OwnerType:    &corev1alpha1.Stage{},
+	})
+	if err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -98,17 +106,7 @@ func (r *ReconcileStage) Reconcile(request reconcile.Request) (reconcile.Result,
 	for name, taskConfig := range stage.Spec.Config.Tasks {
 		err := r.reconcileTask(stage, name, &taskConfig)
 		if err != nil {
-			log.Error(err, "reconciling task", append(logParams, "task_name", name))
-			return reconcile.Result{}, err
-		}
-	}
-
-	phase := corev1alpha1.StageInProgress
-	if phase != stage.Status.Phase {
-		stage.Status.Phase = phase
-		err = r.Client.Update(context.Background(), stage)
-		if err != nil {
-			log.Error(err, "Error updating stage status", logParams...)
+			log.Error(err, "reconciling task", append(logParams, "task_name", name)...)
 			return reconcile.Result{}, err
 		}
 	}
@@ -142,6 +140,25 @@ func (r *ReconcileStage) reconcileTask(stage *corev1alpha1.Stage, name string, c
 		return err
 	} else if err != nil {
 		return err
+	}
+
+	var phase corev1alpha1.StagePhase
+	switch found.Status.Phase {
+	case corev1alpha1.TaskInProgress:
+		phase = corev1alpha1.StageInProgress
+	case corev1alpha1.TaskComplete:
+		phase = corev1alpha1.StageComplete
+	default:
+		return nil
+	}
+
+	if stage.Status.Phase != phase {
+		log.Info("transition stage between phases", "name", stage.Name, "from", stage.Status.Phase, "to", phase)
+		stage.Status.Phase = phase
+		err = r.Update(context.Background(), stage)
+		if err != nil {
+			return err
+		}
 	}
 
 	return nil

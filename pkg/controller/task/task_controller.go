@@ -69,6 +69,14 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 		return err
 	}
 
+	// Watch for Job changes (e.g. status)
+	err = c.Watch(&source.Kind{Type: &batchv1.Job{}}, &handler.EnqueueRequestForOwner{
+		IsController: true,
+		OwnerType:    &corev1alpha1.Task{},
+	})
+	if err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -183,9 +191,19 @@ func (r *ReconcileTask) reconcileJob(task *corev1alpha1.Task) error {
 		if err != nil {
 			return err
 		}
+
 		return nil
 	} else if err != nil {
 		return err
+	}
+
+	if found.Status.Succeeded == 1 && task.Status.Phase != corev1alpha1.TaskComplete {
+		log.Info("marking task as complete", "name", task.Name)
+		task.Status.Phase = corev1alpha1.TaskComplete
+		err = r.Update(context.Background(), task)
+		if err != nil {
+			return err
+		}
 	}
 
 	return nil
