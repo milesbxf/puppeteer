@@ -197,9 +197,19 @@ func (r *ReconcileTask) reconcileJob(task *corev1alpha1.Task) error {
 		return err
 	}
 
-	if found.Status.Succeeded == 1 && task.Status.Phase != corev1alpha1.TaskComplete {
-		log.Info("marking task as complete", "name", task.Name)
-		task.Status.Phase = corev1alpha1.TaskComplete
+	var phase corev1alpha1.TaskPhase
+	switch {
+	case found.Status.Failed == 1:
+		phase = corev1alpha1.TaskError
+	case found.Status.Succeeded == 1:
+		phase = corev1alpha1.TaskComplete
+	case found.Status.Active > 0:
+		phase = corev1alpha1.TaskInProgress
+	}
+
+	if task.Status.Phase != phase {
+		log.Info("transitioning task between phases", "name", task.Name, "from", task.Status.Phase, "to", phase)
+		task.Status.Phase = phase
 		err = r.Update(context.Background(), task)
 		if err != nil {
 			return err

@@ -146,6 +146,8 @@ func (r *ReconcileStage) reconcileTask(stage *corev1alpha1.Stage, name string, c
 	switch found.Status.Phase {
 	case corev1alpha1.TaskInProgress:
 		phase = corev1alpha1.StageInProgress
+	case corev1alpha1.TaskError:
+		phase = corev1alpha1.StageError
 	case corev1alpha1.TaskComplete:
 		phase = corev1alpha1.StageComplete
 	default:

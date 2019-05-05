@@ -12,5 +12,5 @@ spec:
       type: git
       config: |
         {
-          "commit": "fe5f6368bb00aa955f5704b04782c730edd6c883"
+          "commit": "6ecf0ef2c2dffb796033e5a02219af86ec6584e5"
         }

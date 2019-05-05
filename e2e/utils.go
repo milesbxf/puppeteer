@@ -3,6 +3,7 @@ package e2e
 import (
 	"bufio"
 	"context"
+	"flag"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -19,6 +20,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client/apiutil"
 	"sigs.k8s.io/controller-runtime/pkg/client/config"
 )
+
+var persistTestNamespace = flag.Bool("persist-test-namespace", false, "If set, disables clean up of the temporary per-test namespace set up by the test rigging")
 
 type TestRig struct {
 	K8s       client.Client
@@ -73,8 +76,10 @@ func NewTestRig() (*TestRig, error) {
 }
 
 func (t *TestRig) TearDown() {
-	ns := corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: t.Namespace}}
-	t.K8s.Delete(context.Background(), &ns)
+	if !*persistTestNamespace {
+		ns := corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: t.Namespace}}
+		t.K8s.Delete(context.Background(), &ns)
+	}
 }
 
 func LoadResourcesFromTestData(name string) ([]runtime.Object, error) {

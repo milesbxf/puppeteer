@@ -12,7 +12,7 @@ func TestSimpleBuildPipeline(t *testing.T) {
 	g := gomega.NewGomegaWithT(t)
 
 	rig, err := e2e.NewTestRig()
-	// defer rig.TearDown()
+	defer rig.TearDown()
 	g.Expect(err).NotTo(gomega.HaveOccurred(), "setting up test rig")
 	t.Logf("Test rig set up with namespace %s", rig.Namespace)
 
@@ -32,4 +32,26 @@ func TestSimpleBuildPipeline(t *testing.T) {
 
 	WaitForTaskPhase(t, rig, pipeline.Name+"-build-1-build-image-1", corev1alpha1.TaskComplete)
 	WaitForStagePhase(t, rig, pipeline.Name+"-build-1", corev1alpha1.StageComplete)
+}
+
+func TestBrokenPipeline(t *testing.T) {
+	g := gomega.NewGomegaWithT(t)
+
+	rig, err := e2e.NewTestRig()
+	defer rig.TearDown()
+	g.Expect(err).NotTo(gomega.HaveOccurred(), "setting up test rig")
+	t.Logf("Test rig set up with namespace %s", rig.Namespace)
+
+	_, pipeline := SetUpPipeline(t, rig, "broken_pipeline")
+
+	artifactName := WaitForPipelineArtifactName(t, rig, pipeline)
+
+	WaitForArtifact(t, rig, artifactName)
+	WaitForArtifactStorageReference(t, rig, artifactName)
+
+	WaitForStagePhase(t, rig, pipeline.Name+"-build-1", corev1alpha1.StageInProgress)
+	WaitForTaskPhase(t, rig, pipeline.Name+"-build-1-build-image-1", corev1alpha1.TaskInProgress)
+
+	WaitForTaskPhase(t, rig, pipeline.Name+"-build-1-build-image-1", corev1alpha1.TaskError)
+	WaitForStagePhase(t, rig, pipeline.Name+"-build-1", corev1alpha1.StageError)
 }
