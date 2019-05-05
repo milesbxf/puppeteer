@@ -59,7 +59,7 @@ func handleGETStorageID(req typhon.Request) typhon.Response {
 		return resp
 	} else if apierrors.IsNotFound(err) {
 		log.Info("localstorage obj not found", "id", id)
-		resp := typhon.Response{}
+		resp := req.Response(nil)
 		resp.StatusCode = 404
 		return resp
 	} else {
