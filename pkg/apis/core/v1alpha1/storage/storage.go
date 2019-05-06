@@ -6,6 +6,14 @@ import (
 	"path/filepath"
 )
 
+func Load(rootDir, key string) (io.ReadCloser, error) {
+	f, err := os.Open(filepath.Join(rootDir, key))
+	if err != nil {
+		return nil, err
+	}
+	return f, nil
+}
+
 func Store(rootDir string, in io.Reader, key string) error {
 	err := os.MkdirAll(rootDir, 0666)
 	if err != nil {

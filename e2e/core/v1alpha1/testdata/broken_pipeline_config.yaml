@@ -20,7 +20,7 @@ spec:
     - name: build
       tasks:
         build-image:
-          image: debian:buster-slim
+          image: puppeteer/builder:stable
           inputs:
             scm-upstream: {}
           shell: |

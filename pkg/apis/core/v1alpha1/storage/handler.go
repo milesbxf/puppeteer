@@ -21,6 +21,7 @@ var Router = typhon.Router{}
 var log = logf.Log.WithName("storageHandler")
 
 func init() {
+	Router.GET("/v1alpha1/api/core/storage/:id/status", handleGETStorageIDStatus)
 	Router.GET("/v1alpha1/api/core/storage/:id", handleGETStorageID)
 	Router.POST("/v1alpha1/api/core/storage/:id", handlePOSTStorageUpload)
 }
@@ -37,7 +38,41 @@ func handleGETStorageID(req typhon.Request) typhon.Response {
 	params := Router.Params(req)
 	id := params["id"]
 
-	log.Info("Received GET request for storage", "id", id)
+	log.Info("Received GET request for storage file", "id", id)
+
+	k8sclient, err := setupK8sClient()
+	if err != nil {
+		log.Error(err, "setting up K8s client", "id", id)
+		return typhon.Response{Error: err}
+	}
+
+	ls := &corev1alpha1.LocalStorage{}
+	err = k8sclient.Get(context.Background(), types.NamespacedName{Name: id, Namespace: "default"}, ls)
+	if err == nil {
+		reader, err := Load(rootPath, ls.Spec.Key)
+		if err != nil {
+			log.Error(err, "reading file", "id", id)
+			return typhon.Response{Error: err}
+		}
+		resp := req.Response(reader)
+		log.Info("localstorage obj found", "id", id, "response", resp)
+		return resp
+	} else if apierrors.IsNotFound(err) {
+		log.Info("localstorage obj not found", "id", id)
+		resp := req.Response(nil)
+		resp.StatusCode = 404
+		return resp
+	} else {
+		log.Error(err, "looking up local storage", "id", id)
+		return typhon.Response{Error: err}
+	}
+}
+
+func handleGETStorageIDStatus(req typhon.Request) typhon.Response {
+	params := Router.Params(req)
+	id := params["id"]
+
+	log.Info("Received GET request for storage status", "id", id)
 
 	k8sclient, err := setupK8sClient()
 	if err != nil {

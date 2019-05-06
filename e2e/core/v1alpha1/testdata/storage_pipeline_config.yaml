@@ -4,7 +4,7 @@ kind: PipelineConfig
 metadata:
   labels:
     controller-tools.k8s.io: "1.0"
-  name: simple-build-pipeline
+  name: storage-pipeline
 spec:
   workflow:
     inputs:
@@ -26,6 +26,5 @@ spec:
           shell: |
             #!/bin/bash
             set -euxo pipefail
-            echo "Hello, Puppeteer!"
-            ls -alh
+            ls -a1
           workingDir: /puppeteer-data/workspace

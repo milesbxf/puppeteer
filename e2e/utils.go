@@ -15,6 +15,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/yaml"
+	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/kubernetes/scheme"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/apiutil"
@@ -22,10 +23,16 @@ import (
 )
 
 var persistTestNamespace = flag.Bool("persist-test-namespace", false, "If set, disables clean up of the temporary per-test namespace set up by the test rigging")
+var updateGolden = flag.Bool("update-golden", false, "update .golden files")
+
+func UpdateGolden() bool {
+	return *updateGolden
+}
 
 type TestRig struct {
-	K8s       client.Client
-	Namespace string
+	K8s         client.Client
+	ClientGoK8s kubernetes.Interface
+	Namespace   string
 }
 
 func NewTestRig() (*TestRig, error) {
@@ -52,6 +59,8 @@ func NewTestRig() (*TestRig, error) {
 		return nil, err
 	}
 
+	clientset := kubernetes.NewForConfigOrDie(cfg)
+
 	id := strings.ToLower(shortuuid.New())
 	testNamespace := "puppeteer-e2e-test-" + id
 
@@ -70,8 +79,9 @@ func NewTestRig() (*TestRig, error) {
 	}
 
 	return &TestRig{
-		K8s:       c,
-		Namespace: testNamespace,
+		K8s:         c,
+		Namespace:   testNamespace,
+		ClientGoK8s: clientset,
 	}, nil
 }
 

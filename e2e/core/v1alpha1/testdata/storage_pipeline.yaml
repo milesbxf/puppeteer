@@ -1,0 +1,16 @@
+---
+apiVersion: core.puppeteer.milesbryant.co.uk/v1alpha1
+kind: Pipeline
+metadata:
+  labels:
+    controller-tools.k8s.io: "1.0"
+  name: storage-pipeline-1
+spec:
+  pipelineName: storage-pipeline
+  inputs:
+    scm-upstream:
+      type: git
+      config: |
+        {
+          "commit": "6ecf0ef2c2dffb796033e5a02219af86ec6584e5"
+        }

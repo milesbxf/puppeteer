@@ -32,8 +32,8 @@ const (
 
 func Resolve(res *pluginsv1alpha1.GitArtifactResolution) (*corev1alpha1.StorageReference, error) {
 	logParams := []interface{}{"storage_id", res.Name}
-	targetUrl := fmt.Sprintf("%s%s/%s", storageAddress, storagePathPrefix, res.Name)
-	resp, err := http.Get(targetUrl)
+	targetStatusUrl := fmt.Sprintf("%s%s/%s/status", storageAddress, storagePathPrefix, res.Name)
+	resp, err := http.Get(targetStatusUrl)
 	if err != nil {
 		rlog.Error(err, "GET storage service", logParams...)
 		return nil, err
@@ -87,6 +87,7 @@ func Resolve(res *pluginsv1alpha1.GitArtifactResolution) (*corev1alpha1.StorageR
 	contentType := bodyWriter.FormDataContentType()
 	bodyWriter.Close()
 
+	targetUrl := fmt.Sprintf("%s%s/%s", storageAddress, storagePathPrefix, res.Name)
 	resp, err = http.Post(targetUrl, contentType, bodyBuf)
 	if err != nil {
 		rlog.Error(err, "POSTing to storage service", logParams...)

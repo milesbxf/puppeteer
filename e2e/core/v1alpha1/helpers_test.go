@@ -2,11 +2,13 @@ package v1alpha1_test
 
 import (
 	"context"
+	"io/ioutil"
 	"testing"
 
 	"github.com/milesbxf/puppeteer/e2e"
 	corev1alpha1 "github.com/milesbxf/puppeteer/pkg/apis/core/v1alpha1"
 	"github.com/onsi/gomega"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
@@ -146,4 +148,31 @@ func WaitForTaskPhase(t *testing.T, rig *e2e.TestRig, taskName string, phase cor
 		"30s",
 	).Should(gomega.Equal(phase), "waiting for pipeline task "+string(phase))
 	t.Logf("Pipeline task is %s", phase)
+}
+
+func GetPodOutput(t *testing.T, rig *e2e.TestRig, taskName string) string {
+	g := gomega.NewGomegaWithT(t)
+	podList, err := rig.ClientGoK8s.CoreV1().Pods(rig.Namespace).List(metav1.ListOptions{
+		LabelSelector: "puppeteer.milesbryant.co.uk/task-name=" + taskName,
+	})
+	g.Expect(err).NotTo(gomega.HaveOccurred(), "looking up pod")
+	g.Expect(podList.Items).To(gomega.HaveLen(1), "looking up pod")
+
+	podName := podList.Items[0].Name
+
+	req := rig.ClientGoK8s.CoreV1().RESTClient().Get().
+		Namespace(rig.Namespace).
+		Name(podName).
+		Resource("pods").
+		SubResource("log").
+		Param("follow", "false")
+
+	readCloser, err := req.Stream()
+	g.Expect(err).NotTo(gomega.HaveOccurred(), "requesting pod logs")
+
+	defer readCloser.Close()
+	b, err := ioutil.ReadAll(readCloser)
+	g.Expect(err).NotTo(gomega.HaveOccurred(), "reading pod logs")
+
+	return string(b)
 }

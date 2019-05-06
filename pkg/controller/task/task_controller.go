@@ -17,7 +17,9 @@ limitations under the License.
 package task
 
 import (
+	"bytes"
 	"context"
+	"text/template"
 
 	corev1alpha1 "github.com/milesbxf/puppeteer/pkg/apis/core/v1alpha1"
 	batchv1 "k8s.io/api/batch/v1"
@@ -138,7 +140,11 @@ func (r *ReconcileTask) reconcileJob(task *corev1alpha1.Task) error {
 			Parallelism:  utilpointer.Int32Ptr(1),
 			BackoffLimit: utilpointer.Int32Ptr(0),
 			Template: corev1.PodTemplateSpec{
-				ObjectMeta: metav1.ObjectMeta{},
+				ObjectMeta: metav1.ObjectMeta{
+					Labels: map[string]string{
+						"puppeteer.milesbryant.co.uk/task-name": task.Name,
+					},
+				},
 				Spec: corev1.PodSpec{
 					Volumes: []corev1.Volume{
 						initVolume,
@@ -219,14 +225,53 @@ func (r *ReconcileTask) reconcileJob(task *corev1alpha1.Task) error {
 	return nil
 }
 
+const entrypointTmpl = `
+#!/bin/bash
+set -euo pipefail
+
+curl_output=$(curl --fail --verbose -o /puppeteer-data/input.tgz {{ .StorageAddr }} 2>&1)
+curl_exit_code=${?}
+
+if (( $curl_exit_code != 0 )); then
+  echo "failed to curl storage"
+  echo $curl_output
+  exit 1
+fi
+
+mkdir -p {{ .WorkingDir }}
+
+tar xf /puppeteer-data/input.tgz -C {{ .WorkingDir }}
+
+cd {{ .WorkingDir }}
+
+/bin/bash /puppeteer-init/user.sh
+`
+
+type entrypointContext struct {
+	WorkingDir  string
+	StorageAddr string
+}
+
 func (r *ReconcileTask) reconcileInitConfigMap(task *corev1alpha1.Task) (corev1.Volume, corev1.VolumeMount, string, error) {
+	entrypointCtx := entrypointContext{
+		WorkingDir:  task.Spec.Config.WorkingDir,
+		StorageAddr: "http://10.0.2.15:9090/v1alpha1/api/core/storage/git-acae9acaa9c3d6311aa28f90cdbf384a59d19be4f2e414442650b48c",
+	}
+	t := template.Must(template.New("letter").Parse(entrypointTmpl))
+	var buf bytes.Buffer
+	if err := t.Execute(&buf, entrypointCtx); err != nil {
+		return corev1.Volume{}, corev1.VolumeMount{}, "", err
+	}
+	entrypoint := buf.String()
+
 	configmap := &corev1.ConfigMap{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      task.Name + "-init",
 			Namespace: task.Namespace,
 		},
 		Data: map[string]string{
-			"entrypoint.sh": task.Spec.Config.Shell,
+			"entrypoint.sh": entrypoint,
+			"user.sh":       task.Spec.Config.Shell,
 		},
 	}
 	if err := controllerutil.SetControllerReference(task, configmap, r.scheme); err != nil {

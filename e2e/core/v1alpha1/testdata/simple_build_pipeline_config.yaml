@@ -20,7 +20,7 @@ spec:
     - name: build
       tasks:
         build-image:
-          image: golang:1.12-stretch
+          image: puppeteer/builder:stable
           inputs:
             scm-upstream:
               config: |
